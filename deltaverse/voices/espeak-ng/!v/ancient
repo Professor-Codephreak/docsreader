@@ -1,0 +1,69 @@
+language variant
+language en-gb-x-rp
+name ancient
+gender male 90
+
+// ABSOLUTES DO NOT MODULATE — AND NOW THE FILE MEANS IT.
+// This used to be pitch 98 110, a whole tone: "the narrowest interval here that
+// is still an interval". An interval is still somewhere to go. The range is now
+// ZERO. G2, 98.00 Hz, and nothing else. A voice that speaks in absolutes does
+// not move, because it is not asking. flutter still gives it the tremor of age,
+// so it shakes without ever travelling — which is precisely what an ancient
+// authority sounds like.
+pitch 98 98
+
+// AUTHORITY NEEDS A FOLD, NOT ONLY AIR.
+// The old voice was 26% voiced: measured, only 16.6% of its frames carried any
+// periodicity at all. It was very nearly pure noise, and the loudness stage had
+// to lift it +18.0 dB — amplifying breath, because there was little else there.
+// voicing 26 -> 54 puts real tone under the rasp. Measured: voiced 16.6% ->
+// 54.8%, RMS -32.4 -> -26.1 dBFS. The whisper survives (breath and breathw are
+// still wide, roughness is untouched at 5); what arrives is a whisper that has
+// something behind it. Clarity was checked, not assumed: whisper.cpp round-trip
+// WER 4.8% -> 5.8% on the same passage. It costs nothing to understand.
+voicing 54
+
+// AGE THINS, BUT ANCIENT IS NOT HOLLOW.
+// F0/F1 amplitudes come back up (94->114, 98->118). The doctrine that ageing
+// takes the chest still holds in the mids and above; what changed is that a
+// voice with NO bottom reads as frail, and frail is not what was asked for.
+formant 0  94 114  60
+formant 1  98 118  68
+formant 2 104 108  92
+formant 3 106 106  88
+formant 4 104  98  76
+formant 5 100  92  64
+formant 6  96  86  50
+formant 7  94  84  42
+formant 8  92  82  36
+
+// Gravity restored under the rasp: a low anchor at 180 Hz that the old curve
+// (which started at 380 and starved it to 90) simply did not have. Air comes
+// down from 170 to 140 — the rasp is now carried by roughness against real
+// tone, instead of by hiss.
+tone 180 190 380 150 1300 195 2900 140
+
+// THE RASP, KEPT.
+// roughness 5 unchanged — it is the identity. flutter comes down 7 -> 3: an
+// absolute trembles, it does not quaver. breath is narrowed a little because
+// there is tone to make room for now. Consonants stay high: a whisper has no
+// volume to spare and survives on articulation.
+breath   2 4 5 5 5 5 4 3
+breathw 150 190 210 210 210 210 190 160
+roughness 5
+flutter 3
+consonants 92 84
+
+// A little more room than before (40/5 -> 80/12). Still not a hall — a whisper
+// in a cathedral is a sillier thing — but no longer pressed against the ear.
+echo 80 12
+
+// AUTHORITY FROM ABSOLUTE.
+// The old curve spiked the top stress levels +95 and +150 cents: it argued and
+// then insisted. Nothing lifts now. stressAdd is ZERO at every level, so no
+// syllable is ever raised to make a point, and emphasis exists only as
+// amplitude (stressAmp 30/38 at the top). A statement that does not reach for
+// pitch is a statement that is not open to discussion.
+intonation 3
+stressAmp   12 12 13 14 17 21 30 38
+stressAdd    0  0  0  0  0  0  0  0

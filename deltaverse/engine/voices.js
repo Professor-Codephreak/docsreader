@@ -16,21 +16,26 @@
  *                           may not exist. neural prefers the genuinely neural ones (Natural, Neural,
  *                           Premium, Enhanced, WaveNet, Siri) and falls back gracefully to anything.
  *   2. a PROSODY          — rate, pitch, volume. neural's is the reference; a derived voice states its
- *                           delta from it (×0.94 rate, −0.08 pitch) rather than an absolute, so
+ *                           delta from it (a ratio such as ×1.08 rate) rather than an absolute, so
  *                           improving neural improves everything derived from it, which is the point.
  *   3. a CHARACTER        — who is speaking, in one line, shown in the reader.
  *
- * THE DERIVED VOICES
- *   neural       the realm's own voice. The reference. Immutable, and the default.
- *   jaimla       the machine-learning agent — slower and a shade lower, because it considers before it
- *                answers. Jaimla is an agent of the realm, not a narrator of it.
+ * THE SAVED VOICES — each its own record, neither a ratio on the other
+ *   neural       the realm's own voice. The reference, and the DEFAULT.
+ *   jaimla       the machine-learning agent of the realm. THE FEMALE VOICE, and female by
+ *                SELECTION rather than by multiplier — see the JAIMLA record for why a ratio
+ *                cannot do this. She considers before she answers; she is in the realm, not
+ *                narrating it.
+ *
+ * THE DERIVED VOICES — a stated delta on a saved voice
  *   overlord     the register the realm uses about itself: unhurried, low, certain.
  *   ovie         the ollywoo director — quicker and brighter; it is watching, and it is keen.
  *   participant  you, read back to yourself: neutral, local, unremarkable on purpose.
  *
- * Editing: `DVVoices.edit('jaimla', { rate: 0.9 })` adjusts a DERIVED voice and persists it;
- * `DVVoices.reset('jaimla')` returns it to its seed; `DVVoices.derive('mine', { from:'neural', … })`
- * makes a new one. Every derived voice can always say what it is a derivation OF.
+ * Editing: `DVVoices.edit('ovie', { rate: 0.9 })` adjusts a DERIVED voice and persists it;
+ * `DVVoices.reset('ovie')` returns it to its seed; `DVVoices.derive('mine', { from:'jaimla', … })`
+ * makes a new one from either saved voice. A derived voice can always say what it derives FROM.
+ * Editing a SAVED voice is refused, with the derivation to make instead.
  *
  * Prototype lane (.js, zero-dep, UMD). No network, no model download, nothing leaves the browser.
  *
@@ -60,18 +65,66 @@
     prosody: Object.freeze({ rate: 0.98, pitch: 1.0, volume: 1.0 })
   });
 
+  // ── the second saved voice ─────────────────────────────────────────────
+  // JAIMLA IS NOT A DERIVATION, AND SHE CANNOT BE ONE.
+  //
+  // She used to be `delta: { rate: 0.94, pitch: 0.92 }` on neural, with a
+  // selection rule that asked the platform for `daniel` and `male`. That is a
+  // male voice slowed down and pitched down, saved under a female name — and a
+  // ratio cannot fix it, because pitch is not gender. Lowering a male voice
+  // drags its formants down with it and produces a larger man; RAISING one
+  // produces a man speaking falsetto. The thing that carries gender is the
+  // voice the platform hands over, and that is a SELECTION, not a multiplier.
+  //
+  // So Jaimla is saved the way neural is saved: her own record, her own
+  // selection rule, her own prosody, answering to nobody's ratio. neural stays
+  // the default and stays the reference the DERIVED voices are measured
+  // against; Jaimla is simply the other voice the realm keeps.
+  //
+  // The rendered store agrees, and was measured: mindX's own JAIMLA is
+  // en_GB-jenny_dioco-medium at f0 183.8 Hz against neural's alan at 94.6 Hz,
+  // and the bar mindX set for itself is every male below 150 and every female
+  // above 180. The old x0.92-on-alan rendering sat at about 87.
+  var JAIMLA = Object.freeze({
+    id: 'jaimla',
+    name: 'Jaimla',
+    character: 'the machine-learning agent of the realm — she considers before she answers',
+    immutable: true,
+    saved: true,
+    lang: 'en',
+    gender: 'female',
+    // ordered, and female FIRST: a named female voice, then any voice the
+    // platform is willing to call female, and only then the neural tiers. A
+    // platform with no female voice at all gets the best one it has and the
+    // page says which, rather than pretending with a multiplier.
+    prefer: [
+      /google uk english female/i, /google us english female/i,
+      /samantha/i, /serena/i, /kate/i, /libby/i, /aria/i, /jenny/i, /zira/i, /fiona/i,
+      /female/i,
+      /natural/i, /neural/i, /premium/i, /enhanced/i
+    ],
+    // Unhurried, not slow. mindX renders her at 168 wpm against a 175 nominal,
+    // and this is the same relation: softness here is taking her time, not
+    // dragging. Pitch is 1.0 because the VOICE is female — there is nothing
+    // left to fake, and multiplying a female voice up only makes it shrill.
+    prosody: Object.freeze({ rate: 0.94, pitch: 1.0, volume: 1.0 })
+  });
+
+  var SAVED = { neural: NEURAL, jaimla: JAIMLA };
+
   // ── the derivations, each stating its delta from the reference ─────────
   var DERIVED = {
-    jaimla: {
-      id: 'jaimla', name: 'Jaimla', from: 'neural',
-      character: 'the machine-learning agent — it considers before it answers',
-      delta: { rate: 0.94, pitch: 0.92 },
-      prefer: [/neural/i, /natural/i, /google uk english male/i, /daniel/i, /male/i]
-    },
     overlord: {
       id: 'overlord', name: 'OVERLORD', from: 'neural',
-      character: 'the register the realm uses about itself — unhurried, low, certain',
-      delta: { rate: 0.86, pitch: 0.84 },
+      character: 'the register the realm uses about itself — unhurried, low, certain. ' +
+                 'LEADER\u2019s mass and ANCIENT\u2019s refusal to raise a syllable.',
+      // The RENDERED overlord is no longer a ratio on the reference at all: it is its
+      // own voice (en-earth+overlord) with a measured octave under it — see
+      // render/render_overlord.py. A browser cannot do any of that, so this delta is
+      // an APPROXIMATION of it and is labelled as one: as low and as slow as a
+      // speechSynthesis voice will go without turning to gravel.
+      delta: { rate: 0.84, pitch: 0.78 },
+      approximates: 'en-earth+overlord, layered — the rendered file is the real one',
       prefer: [/natural/i, /neural/i, /premium/i, /male/i]
     },
     ovie: {
@@ -95,15 +148,42 @@
   // ── the platform's own voices ──────────────────────────────────────────
   var platform = [];
   function loadPlatform() { platform = (synth && synth.getVoices && synth.getVoices()) || []; return platform; }
+  // COUNTING TICKS IS NOT MEASURING TIME, AND IN A BACKGROUND TAB IT IS NOT CLOSE.
+  //
+  // This used to give up after 20 ticks of a 100 ms interval and call that "2
+  // seconds". It is 2 seconds only in a focused tab. Chrome throttles timers in a
+  // HIDDEN tab to roughly 1 Hz, and in a fully backgrounded one to once a minute —
+  // measured on this page while hidden: a 100 ms interval ticked every 947 ms, so
+  // the 2-second budget became 20, and could become 21 minutes. Every caller puts
+  // its whole bootstrap inside ready().then(...), so the page rendered NOTHING for
+  // that entire time: no voice rows, no LISTEN button, nothing to click. Opening
+  // the page in a background tab — a middle-click, a restored session — was enough.
+  //
+  // So the deadline is now WALL CLOCK. Throttling can delay when we notice the
+  // deadline has passed, but it can no longer multiply the deadline itself, and the
+  // fallback timeout is a single setTimeout for the whole budget rather than a
+  // count of ticks that each have to arrive.
+  //
+  // It is also memoised. ready() was starting a fresh interval for every caller,
+  // and three scripts on this page call it.
+  var READY = null;
+  var READY_MS = 2000;
   function ready() {
-    return new Promise(function (res) {
+    if (READY) return READY;
+    READY = new Promise(function (res) {
       if (!synth) { res([]); return; }
       if (loadPlatform().length) { res(platform); return; }
-      var done = false, n = 0;
+      var done = false;
       var finish = function () { if (done) return; done = true; res(loadPlatform()); };
-      try { synth.addEventListener('voiceschanged', finish, { once: true }); } catch (e) { synth.onvoiceschanged = finish; }
-      var iv = setInterval(function () { if (loadPlatform().length || ++n > 20) { clearInterval(iv); finish(); } }, 100);
+      try { synth.addEventListener('voiceschanged', finish, { once: true }); }
+      catch (e) { synth.onvoiceschanged = finish; }
+      var deadline = Date.now() + READY_MS;
+      setTimeout(finish, READY_MS);                       // the budget, in one timer
+      var iv = setInterval(function () {                  // early exit if voices land sooner
+        if (loadPlatform().length || Date.now() >= deadline) { clearInterval(iv); finish(); }
+      }, 100);
     });
+    return READY;
   }
 
   // first pattern with a match wins; a voice in the reader's own language is preferred within a tier
@@ -127,17 +207,20 @@
 
   // ── resolve an id to everything a reader needs ─────────────────────────
   function get(id) {
-    if (!id || id === 'neural') {
+    var sv = SAVED[id || 'neural'];
+    if (sv) {
       return Object.freeze({
-        id: 'neural', name: NEURAL.name, character: NEURAL.character, immutable: true,
+        id: sv.id, name: sv.name, character: sv.character, immutable: true,
+        saved: true, gender: sv.gender || null,
+        reference: sv.id === 'neural',
         from: null, seed: null,
-        prosody: { rate: NEURAL.prosody.rate, pitch: NEURAL.prosody.pitch, volume: NEURAL.prosody.volume },
-        voice: pick(NEURAL), derivedFrom: null
+        prosody: { rate: sv.prosody.rate, pitch: sv.prosody.pitch, volume: sv.prosody.volume },
+        voice: pick(sv), derivedFrom: null
       });
     }
     var d = DERIVED[id];
     if (!d) return get('neural');
-    var seed = NEURAL.prosody;
+    var seed = (SAVED[d.from] || NEURAL).prosody;
     var base = {
       rate: clamp(seed.rate * (d.delta.rate == null ? 1 : d.delta.rate), 0.1, 4),
       pitch: clamp(seed.pitch * (d.delta.pitch == null ? 1 : d.delta.pitch), 0, 2),
@@ -154,20 +237,23 @@
       },
       edited: !!(e.rate != null || e.pitch != null || e.volume != null),
       voice: pick(d),
-      derivedFrom: 'neural ×' + (d.delta.rate || 1).toFixed(2) + ' rate, ×' + (d.delta.pitch || 1).toFixed(2) + ' pitch'
+      derivedFrom: (d.from || 'neural') + ' ×' + (d.delta.rate || 1).toFixed(2) + ' rate, ×' + (d.delta.pitch || 1).toFixed(2) + ' pitch'
     });
   }
 
+  // neural first, because it is the default; then the other saved voice; then
+  // the derivations, which are the only editable things here.
   function list() {
-    return ['neural'].concat(Object.keys(DERIVED)).map(get);
+    return Object.keys(SAVED).concat(Object.keys(DERIVED)).map(get);
   }
 
   // ── editing: derivations only ──────────────────────────────────────────
   function edit(id, patch) {
-    if (!id || id === 'neural') {
-      // Not an error to ask — an error to do. Say why, and offer the thing that IS allowed.
-      return { ok: false, reason: 'neural is the reference and is not edited. Derive from it instead: ' +
-        'DVVoices.derive("mine", { from:"neural", delta:{ rate:0.95 } })' };
+    var sv = SAVED[id || 'neural'];
+    if (sv) {
+      // Not an error to ask — an error to do. Say why, and offer what IS allowed.
+      return { ok: false, reason: sv.name + ' is a saved voice and is not edited. ' +
+        'Derive from it instead: DVVoices.derive("mine", { from:"' + sv.id + '", delta:{ rate:0.95 } })' };
     }
     if (!DERIVED[id]) return { ok: false, reason: 'no such voice: ' + id };
     var e = edits[id] || (edits[id] = {});
@@ -185,11 +271,12 @@
   // a new voice, seeded from the reference — the sanctioned way to have a voice of your own
   function derive(id, spec) {
     spec = spec || {};
-    if (!id || id === 'neural' || DERIVED[id]) return { ok: false, reason: 'pick an unused id' };
+    if (!id || SAVED[id] || DERIVED[id]) return { ok: false, reason: 'pick an unused id' };
+    var from = SAVED[spec.from] ? spec.from : 'neural';
     DERIVED[id] = {
-      id: id, name: spec.name || id, from: spec.from || 'neural',
-      character: spec.character || 'derived from neural',
-      delta: spec.delta || {}, prefer: spec.prefer || NEURAL.prefer, local: !!spec.local
+      id: id, name: spec.name || id, from: from,
+      character: spec.character || ('derived from ' + from),
+      delta: spec.delta || {}, prefer: spec.prefer || SAVED[from].prefer, local: !!spec.local
     };
     return { ok: true, voice: get(id) };
   }

@@ -1,0 +1,61 @@
+{
+  "$comment": [
+    "THE IMMUTABLE REFERENCE. This file is the voice, written down.",
+    "",
+    "neural is the default voice of the DeltaVerse, on every page and after every",
+    "refresh, and it is not edited — only derived from. That is not a restriction",
+    "for its own sake: a reader who has heard the realm speak once should hear the",
+    "same voice next time, whatever anyone has been auditioning. An audition is not",
+    "a preference, which is why the player deliberately does NOT restore the last",
+    "voice from localStorage.",
+    "",
+    "NOTE WHAT IS ABSENT. There is no length_scale, no rate multiplier, no pitch",
+    "multiplier on the rendered side. The renderer invokes piper with NO scaling",
+    "flag at all. A neutral parameter is still a parameter: 1.0 today is 0.98 the",
+    "day someone decides the reference reads a little fast. The reference has no",
+    "knob to turn.",
+    "",
+    "Two engines, one voice. `rendered` is what a browser plays when the audio",
+    "store has this page; `live` is what the browser's own synthesiser is asked",
+    "for when it does not. They are different machines and cannot be made",
+    "identical — the live entry is a selection rule over whatever voices the",
+    "platform happens to have, and it says so."
+  ],
+  "id": "neural",
+  "name": "Neural",
+  "immutable": true,
+  "default": true,
+  "character": "the realm's own voice — the reference every other voice is derived from",
+
+  "rendered": {
+    "engine": "piper",
+    "model": "en_GB-alan-medium",
+    "flags": [],
+    "$flags": "empty ON PURPOSE — see the note above; render_neural.py passes none",
+    "measured": { "f0Hz": 94.6, "sampleRate": 22050, "realtimeFactor": 2.4 },
+    "$measured": "measured on a 2-vCPU host, not quoted from upstream. piper is non-deterministic (noise_scale 0.667, noise_w 0.8), so two renders of one sentence differ byte for byte; compare durations, never checksums."
+  },
+
+  "live": {
+    "engine": "speechSynthesis",
+    "prosody": { "rate": 0.98, "pitch": 1.0, "volume": 1.0 },
+    "prefer": [
+      "natural", "neural", "premium", "enhanced", "wavenet",
+      "siri", "^google (uk|us) english", "google", "microsoft"
+    ],
+    "$prefer": "ordered, first match wins, matched case-insensitively against the platform's own voice names — so the best voice actually PRESENT is used rather than a name that may not exist"
+  },
+
+  "derivations": {
+    "$comment": "a derivation stores a RATIO, never an absolute, so improving the reference improves everything measured against it",
+    "ovie":        { "rate": 1.08, "pitch": 1.08, "character": "the ollywoo director — quicker and brighter" },
+    "participant": { "rate": 1.00, "pitch": 1.00, "character": "you, read back to yourself",
+                     "$note": "x1.00/x1.00 IS neural under a second name; it measures identically (f0 94.6 Hz) and that is an open question, not a finding" }
+  },
+
+  "notDerivedFromThis": {
+    "$comment": "voices that are NOT ratios on neural, and cannot be",
+    "jaimla":   "saved in her own right. Pitch is not gender: lowering a male voice produces a larger man, not a woman. Female by SELECTION — en_GB-jenny_dioco-medium rendered (f0 183.8 Hz), a named female platform voice live.",
+    "overlord": "its own voice — en-earth+overlord, LEADER's mass with ANCIENT's refusal to raise a syllable, plus a calibrated octave underneath (f0 81.1 Hz)."
+  }
+}

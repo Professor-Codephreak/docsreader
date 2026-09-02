@@ -218,5 +218,26 @@ function Deck() {
   )
 }
 
-const el = document.getElementById('listen-deck')
-if (el && window.listenState) createRoot(el).render(<Deck />)
+// MOUNTING AT SCRIPT-EVAL TIME ONLY WORKS WHEN THE HOST IS ALREADY THERE.
+//
+// On the mindX doc page the player markup is server-rendered, so #listen-deck and
+// window.listenState both exist before this file runs. On DeltaVerse the player
+// builds its panel in JavaScript when the reader mounts, which can be after this
+// script — so the one-shot check found nothing and the deck silently never
+// appeared. Wait for both, briefly, instead of assuming a load order.
+function mount() {
+  const el = document.getElementById('listen-deck')
+  if (!el || !window.listenState || el.dataset.mounted) return !!el?.dataset.mounted
+  el.dataset.mounted = '1'
+  createRoot(el).render(<Deck />)
+  return true
+}
+if (!mount()) {
+  const t0 = Date.now()
+  const iv = setInterval(() => {
+    // a wall-clock deadline, not a tick count: a hidden tab throttles timers to
+    // about 1 Hz and a count of ticks would stretch ten seconds into minutes
+    if (mount() || Date.now() - t0 > 10000) clearInterval(iv)
+  }, 120)
+  window.addEventListener('mindx:listen', mount)
+}

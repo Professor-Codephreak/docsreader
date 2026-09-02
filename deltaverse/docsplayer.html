@@ -1,0 +1,350 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>doc.player — read any page aloud | DeltaVerse</title>
+<meta name="description" content="Paste a URL and hear the page read aloud, highlighted word by word. The DeltaVerse doc.player as a full page.">
+<link rel="preconnect" href="https://deltaverse.pythai.net">
+<style>
+:root{--bg0:#000;--bg1:#080a16;--txt:#fff;--muted:rgba(255,255,255,.76);--quiet:rgba(255,255,255,.42);
+  --cy:34,211,238;--vi:157,78,221;--am:255,176,84;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(120% 70% at 50% 0%,var(--bg1) 0%,var(--bg0) 60%);
+  color:var(--txt);font-family:var(--sans);line-height:1.65}
+.wrap{max-width:82ch;margin:0 auto;padding:38px 24px 120px}
+h1{font-size:clamp(26px,5vw,40px);margin:0 0 4px;letter-spacing:-.015em}
+.lede{color:var(--quiet);font-size:14px;margin:0 0 26px}
+h2{margin:34px 0 8px;font-size:12px;font-family:var(--mono);letter-spacing:.2em;text-transform:uppercase;color:rgb(var(--am))}
+p{margin:0 0 14px;color:var(--muted)}
+li{color:var(--muted);margin:4px 0}
+a{color:rgb(var(--cy));text-decoration:none;border-bottom:1px solid rgba(var(--cy),.3)}
+code{font-family:var(--mono);font-size:.9em;color:rgb(var(--am));background:rgba(255,255,255,.05);padding:1px 5px;border-radius:4px}
+hr{border:0;height:1px;margin:30px 0;background:linear-gradient(90deg,rgba(var(--cy),.4),rgba(var(--vi),.3),transparent)}
+
+/* ── the address bar ─────────────────────────────────────────────── */
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px}
+.bar input{flex:1 1 320px;min-width:0;font:inherit;font-size:14px;padding:11px 13px;border-radius:10px;
+  background:rgba(255,255,255,.05);color:#e6edf3;border:1px solid rgba(255,255,255,.16);font-family:var(--mono)}
+.bar input::placeholder{color:rgba(255,255,255,.3)}
+.bar input:focus{outline:none;border-color:rgba(var(--cy),.55);background:rgba(var(--cy),.06)}
+.bar button{font:inherit;font-size:13px;font-family:var(--mono);letter-spacing:.12em;padding:11px 20px;border-radius:10px;
+  background:rgba(var(--cy),.14);color:rgb(var(--cy));border:1px solid rgba(var(--cy),.45);cursor:pointer}
+.bar button:hover{background:rgba(var(--cy),.24)}
+.bar button[disabled]{opacity:.45;cursor:progress}
+.bar2{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin:0 0 8px}
+.bar2 label{font-family:var(--mono);font-size:11px;color:var(--quiet);letter-spacing:.1em;
+  display:flex;gap:7px;align-items:center;text-transform:uppercase}
+.bar2 select{font:inherit;font-size:12px;font-family:var(--mono);padding:8px 10px;border-radius:8px;
+  background:#0b0f1a;color:#e6edf3;border:1px solid rgba(255,255,255,.18)}
+.bar2 select option{background:#0b0f1a;color:#e6edf3}
+.bar2 select option:checked{background:#14304a;color:#fff}
+.bar2 button{font:inherit;font-size:12px;font-family:var(--mono);letter-spacing:.1em;padding:9px 16px;
+  border-radius:8px;background:rgba(var(--vi),.16);color:rgb(var(--vi));
+  border:1px solid rgba(var(--vi),.5);cursor:pointer}
+.bar2 button:hover{background:rgba(var(--vi),.28)}
+.bar2 button[disabled]{opacity:.45;cursor:progress}
+.bar2 audio{height:34px;max-width:100%;flex:1 1 240px;min-width:0}
+.bar2 audio:not([src]){display:none}
+.dl{font-family:var(--mono);font-size:11px;letter-spacing:.1em;padding:9px 14px;border-radius:8px;
+  background:rgba(var(--am),.14);color:rgb(var(--am));border:1px solid rgba(var(--am),.45);
+  text-decoration:none;white-space:nowrap}
+.dl:hover{background:rgba(var(--am),.26)}
+.store{font-family:var(--mono);font-size:10.5px;color:var(--quiet);margin:0 0 6px}
+.store b{color:rgba(255,255,255,.6);font-weight:400}
+.note{font-family:var(--mono);font-size:11.5px;color:var(--quiet);min-height:1.5em;margin:0 0 4px;line-height:1.7}
+.note.bad{color:rgba(255,150,150,.85)}
+.picks{font-family:var(--mono);font-size:11px;color:var(--quiet);margin:0 0 8px}
+.picks button{font:inherit;background:none;border:0;border-bottom:1px dotted rgba(var(--cy),.45);
+  color:rgb(var(--cy));cursor:pointer;padding:0;margin:0 12px 4px 0}
+
+/* ── the fetched document ────────────────────────────────────────── */
+#doc{margin-top:26px}
+#doc:empty{display:none}
+#doc h1{font-size:clamp(22px,4vw,32px);margin:0 0 10px}
+#doc h2{font-family:var(--sans);font-size:19px;letter-spacing:0;text-transform:none;color:#fff;margin:30px 0 8px}
+#doc h3,#doc h4{margin:22px 0 6px;font-size:16px;color:#fff}
+#doc p,#doc blockquote,#doc cite,#doc figcaption,#doc dd,#doc dt{margin:0 0 13px;color:var(--muted)}
+#doc blockquote{border-left:2px solid rgba(var(--vi),.5);padding-left:14px;font-style:italic}
+.srcline{font-family:var(--mono);font-size:11px;color:var(--quiet);margin:0 0 18px;
+  padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.1)}
+.foot{margin-top:56px;padding-top:18px;border-top:1px solid rgba(255,255,255,.12);
+  font-family:var(--mono);font-size:11px;color:var(--quiet);line-height:1.9}
+</style>
+
+<div class="wrap">
+<h1>doc.player</h1>
+<p class="lede">Paste a URL. The page is read aloud and lit word by word &mdash; and can be rendered to a file you keep.</p>
+
+<div class="bar" data-noread>
+  <input id="u" type="url" spellcheck="false" autocomplete="off"
+         placeholder="https://deltaverse.pythai.net/voices.html" aria-label="URL to read">
+  <button id="go" type="button">READ</button>
+</div>
+<div class="bar2" data-noread hidden id="row2">
+  <label>render <select id="voice" aria-label="rendering voice"></select></label>
+  <button id="make" type="button">RENDER TO A FILE</button>
+  <audio id="au" controls preload="metadata"></audio>
+  <a id="dl" class="dl" hidden download>&#8615; DOWNLOAD</a>
+</div>
+<p class="note" id="rnote" data-noread role="status" aria-live="polite"></p>
+<p class="note" id="note" data-noread role="status" aria-live="polite"></p>
+<p class="picks" data-noread>try:
+  <button data-u="/voices.html">the voices</button>
+  <button data-u="/codephreak.html">codephreak</button>
+  <button data-u="/docsreader.html">docsreader</button>
+  <button data-u="/map.html">the map</button>
+</p>
+
+<p class="store" id="storeline" data-noread></p>
+
+<div id="doc"></div>
+
+<div id="about">
+<hr>
+<h2>What this is</h2>
+<p>The same <code>doc.player</code> that rides on every DeltaVerse page, given a whole page of its own and an address bar. It fetches the URL, reads the prose out of it, and speaks it — highlighting each word as it is said, so you can follow along or look away.</p>
+<h2>What crosses, and what does not</h2>
+<p><strong>No markup from the fetched page ever enters this one.</strong> The response is parsed by <code>DOMParser</code>, which builds an inert document — no browsing context, so its scripts never run and its images never load — and only <em>text</em> is taken out of it. Every element you see below was built here, with <code>textContent</code>, under a tag name chosen from a fixed list. Sanitising markup is a filter you can lose; extracting text is a boundary you cannot.</p>
+<p>The request carries <strong>no credentials</strong>. Reading a page aloud must never hand your cookies to a host you only pasted.</p>
+<h2>The limit, stated plainly</h2>
+<p>A browser may only read another site if that site allows it (a CORS header). Most do not. Same-site URLs — anything on <code>deltaverse.pythai.net</code> — always work; for anywhere else, the page will say so rather than fail vaguely. There is no proxy behind this box, deliberately: a server that will fetch any URL you hand it is an open relay into everything it can reach.</p>
+<h2>Two ways to hear it, and why there are two</h2>
+<p><strong>Read it</strong> — the player panel speaks the page with the browser's own synthesiser and lights each word as it is said. Instant, free, and nothing leaves your machine. But <code>speechSynthesis</code> output <em>cannot be captured</em>: no browser API hands you its samples, so there is nothing to save.</p>
+<p><strong>Render it</strong> — the text is sent to DeltaVerse and synthesised into a real Opus file that you can scrub, download and keep. That is a second rendering by a different engine, which is why it can sound different from what the panel just read you.</p>
+<h2>The rendering engine</h2>
+<p>espeak-ng, not the neural voices the <a href="/voices.html">DeltaVerse store</a> uses. Those are piper, they sound better, and they run at about <em>one times realtime</em> on this host — a four-thousand-word page is twenty-five minutes of CPU, which is not something you can put behind a button somebody just pressed. espeak renders the same page in a couple of seconds. The cast here is mindX's own tuned set, and it includes <strong>OVERLORD</strong>: the LEADER voice's mass and reach combined with ANCIENT's refusal to ever raise a syllable, with a measured octave underneath it.</p>
+<h2>The store</h2>
+<p>Renders are kept and served as ordinary static files, so a page you have already rendered comes back instantly and costs nothing to make again. The cache holds <strong>300 MB</strong>; past that the least recently <em>played</em> render is dropped first — recently used means recently listened to, not recently made, so the page everyone keeps coming back to is the one that survives.</p>
+<h2>Colophon</h2>
+<p>The instrument deck is <a href="https://git.dreamodus.software/Dreamodus/DreamKnob">DreamKnob</a>. The
+JavaScript idiom — plain modules, no framework on the page, one behaviour per file — follows
+<a href="https://github.com/javascriptit">javascriptit</a>, and the interaction pieces (drag, drop, resize
+and the other small reusable behaviours) follow <a href="https://github.com/mlodular">mlodular</a>.</p>
+
+<div class="foot">
+  DeltaVerse · doc.player · <a href="/voices.html">voices</a> · <a href="/docsreader.html">docsreader</a> · <a href="/">deltaverse.pythai.net</a><br>
+  <code>?url=</code> opens this page already reading: <code>/docsplayer.html?url=/codephreak.html</code>
+</div>
+</div>
+</div>
+
+<script src="/engine/ngn/voices.js"></script>
+<script src="/engine/ngn/doc-audio.js"></script>
+<script src="/engine/ngn/doc-reader.js"></script>
+<script defer src="/engine/ngn/audio_rack.js"></script>
+<script>
+(function () {
+  'use strict';
+  var IN = document.getElementById('u'), GO = document.getElementById('go');
+  var NOTE = document.getElementById('note'), DOC = document.getElementById('doc');
+  var ABOUT = document.getElementById('about');
+  var reader = null;
+  var current = null;          // {items, url, title} — what RENDER will send
+  var VOICE = document.getElementById('voice'), MAKE = document.getElementById('make');
+  var AU = document.getElementById('au'), DL = document.getElementById('dl');
+  var ROW2 = document.getElementById('row2'), RNOTE = document.getElementById('rnote');
+
+  function rnote(msg, bad) {
+    RNOTE.textContent = msg || '';
+    RNOTE.classList.toggle('bad', !!bad);
+  }
+  function kb(n) { return n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.round(n / 1024) + ' KB'; }
+  function mmss(s) { s = Math.round(s); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+
+  function note(msg, bad) {
+    NOTE.textContent = msg || '';
+    NOTE.classList.toggle('bad', !!bad);
+  }
+
+  // The tag names we are willing to create. The remote page does not get to pick
+  // an element for us; it only gets to be one of these.
+  var SAFE = { h1: 'h2', h2: 'h2', h3: 'h3', h4: 'h4', p: 'p', blockquote: 'blockquote',
+               li: 'p', cite: 'cite', figcaption: 'p', dd: 'p', dt: 'p', td: 'p' };
+  var SKIP = 'nav, footer, .foot, script, style, [data-noread]';
+
+  function extract(rdoc) {
+    var scope = rdoc.querySelector('main,article,[role=main]') || rdoc.body;
+    if (!scope) return [];
+    var sel = 'h1,h2,h3,h4,p,blockquote,li,cite,figcaption,dd,dt,td';
+    var seen = Object.create(null), out = [];
+    [].slice.call(scope.querySelectorAll(sel)).forEach(function (n) {
+      if (n.closest && n.closest(SKIP)) return;
+      if (n.querySelector && n.querySelector(sel)) return;      // containers, not leaves
+      var txt = (n.textContent || '').replace(/\s+/g, ' ').trim();
+      if (txt.length < 2 || !/[a-z0-9]/i.test(txt)) return;
+      if (seen[txt]) return; seen[txt] = 1;                     // a nav repeated in a footer
+      var tag = SAFE[n.tagName.toLowerCase()] || 'p';
+      out.push({ tag: tag, text: txt });
+    });
+    return out;
+  }
+
+  function paint(items, u, docTitle) {
+    if (reader) { try { reader.destroy(); } catch (e) {} reader = null; }
+    DOC.innerHTML = '';
+    var h = document.createElement('h1');
+    h.textContent = docTitle || u.pathname.split('/').pop() || u.hostname;
+    DOC.appendChild(h);
+    var s = document.createElement('p'); s.className = 'srcline';
+    s.setAttribute('data-noread', '1');
+    s.textContent = u.href + ' · ' + items.length + ' blocks';
+    DOC.appendChild(s);
+    items.forEach(function (it) {
+      var n = document.createElement(it.tag);
+      n.textContent = it.text;                                  // TEXT, never innerHTML
+      DOC.appendChild(n);
+    });
+    current = { items: items, url: u.href, title: docTitle || '' };
+    ABOUT.hidden = true;
+    ROW2.hidden = false;
+    AU.removeAttribute('src'); DL.hidden = true; rnote('');
+    if (window.DVDocReader) {
+      reader = DVDocReader.mount({ root: DOC, label: (docTitle || u.hostname).slice(0, 40) });
+      if (reader) { reader.open(true); }
+    }
+  }
+
+  function read(raw, push) {
+    var href = (raw || '').trim();
+    if (!href) {
+      DOC.innerHTML = ''; ABOUT.hidden = false; ROW2.hidden = true; current = null;
+      AU.removeAttribute('src'); DL.hidden = true; note(''); rnote('');
+      if (reader) { try { reader.destroy(); } catch (e) {} reader = null; }
+      return;
+    }
+    var u;
+    try { u = new URL(href, location.href); } catch (e) { note('that is not a URL', true); return; }
+    if (!/^https?:$/.test(u.protocol)) { note('only http and https can be fetched', true); return; }
+    var cross = (u.origin !== location.origin);
+    IN.value = u.href;
+    note('fetching ' + u.hostname + '…');
+    GO.disabled = true;
+    fetch(u.href, { credentials: 'omit', redirect: 'follow' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status + ' from ' + u.hostname);
+        var ct = r.headers.get('content-type') || '';
+        if (ct && !/text\/html|text\/plain|application\/xhtml/i.test(ct))
+          throw new Error('that URL is ' + ct.split(';')[0] + ', not a page');
+        return r.text();
+      })
+      .then(function (html) {
+        // inert: no browsing context, so nothing in here runs or loads
+        var rdoc = new DOMParser().parseFromString(html, 'text/html');
+        var items = extract(rdoc);
+        if (!items.length) throw new Error('no readable text on that page');
+        paint(items, u, (rdoc.title || '').trim());
+        note(items.length + ' blocks — press play in the panel, or clear the box to come back');
+        document.title = (rdoc.title || u.hostname) + ' — doc.player';
+        if (push) {
+          try { history.replaceState(null, '', '?url=' + encodeURIComponent(u.href)); } catch (e) {}
+        }
+      })
+      .catch(function (err) {
+        var m = String((err && err.message) || err);
+        // Name the actual wall. "Failed to fetch" across origins is CORS every
+        // time, and guessing at it wastes the reader's afternoon.
+        if (cross && /failed to fetch|networkerror|load failed/i.test(m))
+          note(u.hostname + ' does not allow other sites to read it (no CORS header). ' +
+               'Same-site URLs always work.', true);
+        else note(m, true);
+      })
+      .then(function () { GO.disabled = false; });
+  }
+
+  // ── RENDER TO A FILE ─────────────────────────────────────────────
+  //
+  // speechSynthesis reads the page but its output CANNOT BE CAPTURED — no browser
+  // API hands you its samples — so a file you can keep is a second, server-side
+  // rendering of the same text. It comes back as an ordinary opus URL: the audio
+  // element streams and seeks it, and the download link is just that URL.
+  function render() {
+    if (!current || !current.items.length) { rnote('nothing loaded to render', true); return; }
+    MAKE.disabled = true;
+    var v = VOICE.value || 'overlord';
+    rnote('rendering ' + current.items.length + ' blocks as ' + v + '…');
+    fetch('/docsplayer/render', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url: current.url, title: current.title, voice: v,
+        blocks: current.items.map(function (i) { return { text: i.text }; })
+      })
+    }).then(function (r) {
+      return r.json().then(function (j) {
+        if (!r.ok) throw new Error(j.detail || ('HTTP ' + r.status));
+        return j;
+      });
+    }).then(function (m) {
+      AU.src = m.parts[0].url;
+      DL.href = m.download;
+      DL.download = ((m.title || 'page').replace(/[^\w. -]+/g, '').trim().slice(0, 60) || 'page')
+                    + ' — ' + m.voiceName + '.opus';
+      DL.hidden = false;
+      rnote((m.cached ? 'already rendered — ' : '') + m.voiceName + ' · ' + mmss(m.seconds) +
+            ' · ' + kb(m.bytes) +
+            (m.cached ? '' : ' · made in ' + m.renderSeconds + 's (' + m.realtimeFactor + '\u00d7 realtime)') +
+            (m.pruned ? ' · pruned ' + m.pruned + ' older render(s) to stay under 300 MB' : ''));
+      showStore();
+    }).catch(function (e) {
+      rnote(String((e && e.message) || e), true);
+    }).then(function () { MAKE.disabled = false; });
+  }
+  MAKE.addEventListener('click', render);
+
+  function showStore() {
+    fetch('/docsplayer/store').then(function (r) { return r.json(); }).then(function (s) {
+      var el = document.getElementById('storeline');
+      if (el) el.innerHTML = 'store: <b>' + kb(s.usedBytes) + '</b> of 300 MB across <b>' +
+        s.renders + '</b> render' + (s.renders === 1 ? '' : 's') +
+        ' — least recently played is pruned first';
+    }).catch(function () {});
+  }
+
+  fetch('/docsplayer/voices').then(function (r) { return r.json(); }).then(function (d) {
+    // The cost of a voice is part of choosing it. neural is the reference and the
+    // default, and it is also ~30x slower than the espeak cast — saying so in the
+    // option itself beats letting someone discover it by watching a spinner.
+    d.voices.forEach(function (v) {
+      var o = document.createElement('option');
+      o.value = v.id;
+      o.textContent = v.name + (v.rtf && v.rtf < 10 ? '  (slower)' : '');
+      o.title = v.note + (v.rtf ? '  —  about ' + v.rtf + '\u00d7 realtime on this host' : '');
+      VOICE.appendChild(o);
+    });
+    VOICE.value = d.default;
+    VOICE.addEventListener('change', function () {
+      var o = VOICE.options[VOICE.selectedIndex];
+      rnote(o ? o.title : '');
+    });
+  }).catch(function () {
+    ROW2.querySelector('label').hidden = true;
+    MAKE.disabled = true; MAKE.title = 'the render service is not reachable';
+  });
+  showStore();
+
+  GO.addEventListener('click', function () { read(IN.value, true); });
+  IN.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); read(IN.value, true); }
+  });
+  [].forEach.call(document.querySelectorAll('.picks button'), function (b) {
+    b.addEventListener('click', function () { read(b.dataset.u, true); });
+  });
+
+  var start = new URLSearchParams(location.search).get('url');
+  if (window.DVVoices) {
+    DVVoices.ready().then(function () {
+      if (start) { read(start, false); return; }
+      // ready() can resolve LATE — voice enumeration is asynchronous in every
+      // browser and slow in some. Writing this warning unconditionally stomped
+      // the "43 blocks" line a completed fetch had already put there, so the
+      // page reported a stale problem about a document it had just loaded fine.
+      // A startup warning may only speak while nothing has happened yet.
+      if (!current && !DVVoices.usable())
+        note('this browser has a speech synthesiser but no installed voices, so nothing ' +
+             'can be spoken here — but RENDER TO A FILE still works, because that is ' +
+             'synthesised on the server. On Linux: install speech-dispatcher and a voice ' +
+             'such as espeak-ng.', true);
+    });
+  } else if (start) { read(start, false); }
+})();
+</script>

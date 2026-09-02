@@ -1,0 +1,100 @@
+// en-earth — ONE ACCENT ASSEMBLED FROM THE ACCENTS OF THE WORLD.
+//
+// A leader of EARTH cannot speak in one nation's mouth. This is not a variant
+// (espeak-ng SILENTLY IGNORES `replace` in !v/ files — verified: en-gb+rtest is
+// byte-identical to en-gb), it is a full voice, because only a voice file may
+// redefine phonemes. That is what makes a composite accent possible at all.
+//
+// THE METHOD: FEATURES CHOSEN BY AGREEMENT, NOT BY SAMPLING.
+// espeak's `replace` is all-or-nothing per phoneme — there is no "10% Brazilian".
+// So a caricature is the only thing a naive blend can produce. The way out is to
+// pick features where SEVERAL world Englishes independently agree, and apply
+// those globally. Then no single accent is being imitated; the overlap is.
+// Every rule below was verified to actually fire (rulecheck.sh diffs the phoneme
+// stream with and against the rule) — five candidates were dropped as silent
+// no-ops: L->U, t->t#, r->r-, @->V, e@->E:.
+//
+// BASE: en-wi, espeak's West Indies table. The only English here that is not a
+// metropole's. It carries, for free, four features that are already global:
+//   D->d, T->t[   TH-stopping .... Caribbean, Brooklyn, Russian, Brazilian,
+//                                  Mexican, Indian
+//   @/3 -> a#     non-rhotic ..... RP, Australian, Brooklyn, Caribbean, Indian
+//   N->n (unstr)  the -in' ending . Caribbean, Brooklyn, Australian, Brazilian
+//   happY tensing  h'api ......... RP, US, Australian, Mexican, Brazilian
+name English (Earth)
+language en-earth
+language en 20
+
+phonemes en-wi
+dictrules 8
+
+// SYLLABLE TIMING, AND THE PAUSE.
+// English is stress-timed: unstressed syllables are crushed. Most of the world
+// does not speak it that way — Indian, Mexican, Brazilian, Caribbean and
+// Nigerian English are all closer to syllable-timed, giving every syllable its
+// own weight. en-US crushes hardest (140 120 190 170 ...); this evens the low
+// levels and lengthens all of them, then lets the top two run long (300/355) so
+// the last stressed syllable of a clause is HELD. Authority is not speed.
+stressLength 190 185 195 195 245 245 300 355
+
+// `words 2` puts a measured gap between every word: +11% duration at the same
+// rate. This is the pause the authority comes from, and it is the single
+// largest gain in enunciation available without touching amplitude.
+words 2
+
+// --- THE GLOBAL BASE, STATED EXPLICITLY -----------------------------------
+// TRAP FOUND THE HARD WAY: `phonemes en-wi` imports the West Indies PHONEME
+// TABLE, not en-029's own replace rules — those live in the voice file, not the
+// table. Inheriting the table alone silently lost TH-stopping and rhoticity:
+// en-earth said "DIs" where en-029 says "dIs". Restated here, where they can
+// be seen. These four are the ones the world already agrees on.
+replace 00 D d          // TH-stopping: Caribbean, Brooklyn, Russian, Brazilian,
+replace 00 T t[         //   Mexican, Indian. Six accents, one rule.
+replace 03 @ a#         // non-rhotic elsewhere: RP, Australian, Brooklyn,
+replace 03 3 a#         //   Caribbean, Indian
+replace 03 N n          // the -in' ending, unstressed only
+
+// --- ROYAL ---------------------------------------------------------------
+// The CURE-FORCE merger: "sure" and "shore" become the same vowel. RP.
+replace 00 U@ O@
+
+// --- NEW YORK (BROOKLYN) -------------------------------------------------
+// THOUGHT raised and in-gliding: "talk, law, thought" take a schwa offglide,
+// the vowel that makes "coffee" a New York shibboleth. It lands on the SAME
+// target as the royal rule above — two accents, one vowel. That is the whole
+// thesis of this file in one line.
+replace 00 O: O@
+
+// --- UNITED STATES -------------------------------------------------------
+// NURSE goes r-coloured while everything else stays non-rhotic. A single
+// rhotic vowel in an otherwise non-rhotic voice is exactly how American
+// influence surfaces in a world English, rather than by making it all rhotic.
+replace 00 3: 3
+
+// --- AUSTRALIA -----------------------------------------------------------
+// SQUARE goes monophthong: "square, there, care" lose the offglide. This is the
+// Australian/NZ vowel, and it is subtle BY CONSTRUCTION — SQUARE is one of the
+// rarest vowels in English, so the accent is carried without touching the words
+// that carry the meaning.
+// The obvious Australian rule, FLEECE-onglide i:->@i, is NOT here: it passed a
+// difference test and then ATE THE VOWEL — "three" came out [T*] with no
+// nucleus at all, because @i is not in this table. FIRES IS NOT CORRECT.
+// rulecheck2.sh now checks word count and that every word keeps a nucleus.
+replace 00 e@ e:
+
+// --- MEXICO / BRAZIL / INDIA ---------------------------------------------
+// STRUT backs to PALM: "but" -> [bA:t]. Neither Spanish nor Portuguese has
+// /V/, and Indian and Caribbean English back it the same way. Four agree.
+replace 00 V A:
+
+// --- SLAVIC (and half the planet) ----------------------------------------
+// The tap. Russian, Spanish, Portuguese, Scottish and Indian English all
+// realise /r/ as a tap or trill; the English approximant is the outlier. The
+// tap is chosen over the trill (R, R2 — both fire) because a trill is a
+// costume. It is also CRISPER than the approximant: this rule increases
+// enunciation, it does not only colour it.
+replace 00 r *
+
+// Dark L everywhere — Russian hard л, and equally Brooklyn and Brazilian
+// coda L. Weight at the back of the mouth, which the chest tuning then carries.
+replace 00 l L

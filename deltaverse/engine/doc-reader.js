@@ -86,6 +86,13 @@
     '.dv-reader-panel select,.dv-reader-panel input[type=range]{font:inherit;font-size:11px;',
     '  background:rgba(255,255,255,.04);color:rgba(255,255,255,.82);border:1px solid rgba(255,255,255,.14);',
     '  border-radius:7px;padding:4px 6px;flex:1;min-width:0}',
+    // THE OPTION LIST IS NOT THE SELECT. The closed control was styled dark and
+    // the open popup was not, so it fell back to the platform default — a white
+    // list rendering near-white inherited text, and the voice names disappeared
+    // at the moment you were choosing between them. Both halves must be stated.
+    '.dv-reader-panel select option,.dv-reader-panel select optgroup{',
+    '  background:#0b0f1a;color:#e6edf3}',
+    '.dv-reader-panel select option:checked{background:#14304a;color:#fff}',
     '.dvr-meta{margin-top:9px;font-size:9.5px;line-height:1.75;color:rgba(255,255,255,.42);letter-spacing:.04em}',
     '.dvr-meta b{color:rgba(var(--cy,34,211,238),.92);font-weight:600}',
     '.dvr-meta i{font-style:normal;color:rgba(var(--am,255,176,84),.9)}',
@@ -205,13 +212,27 @@
     var blocks = collect(opts.root);
     if (!blocks.length) return null;
 
+    // NEURAL IS THE DEFAULT ON EVERY REFRESH, AND THAT IS NOT AN OVERSIGHT.
+    //
+    // The voice used to be restored from localStorage, so whatever you last
+    // auditioned became the voice of the realm on that machine forever — press
+    // OVERLORD once to hear it and every page you open afterwards greets you in
+    // it. The page's own rule is the argument against that: a reader who has
+    // heard the realm speak once should hear the same voice next time, on every
+    // page, whatever anyone has been experimenting with. An audition is not a
+    // preference.
+    //
+    // The RATE is still restored, because that is a comfort setting rather than
+    // an identity — someone who reads at 1.3x wants to read at 1.3x, and it does
+    // not change who is speaking.
     var state = { voice: 'neural', rate: 1 };
     try {
       var saved = JSON.parse(global.localStorage.getItem(KEY) || '{}');
-      if (saved && saved.voice) state.voice = saved.voice;
       if (saved && saved.rate) state.rate = +saved.rate;
     } catch (e) {}
-    function save() { try { global.localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+    // only what is actually restored is stored: writing `voice` here would leave a
+    // key on disk that looks like a preference and is never read again.
+    function save() { try { global.localStorage.setItem(KEY, JSON.stringify({ rate: state.rate })); } catch (e) {} }
 
     // ── the button, inside the document's own h1 ─────────────────────────
     var h1 = (opts.root || doc).querySelector('h1');
@@ -247,6 +268,9 @@
       '<div class="dvr-row"><select data-a="voice" title="voice"></select></div>' +
       '<div class="dvr-row"><span style="font-size:9.5px;letter-spacing:.14em;color:rgba(255,255,255,.4)">RATE</span>' +
       '<input type="range" data-a="rate" min="0.6" max="1.6" step="0.02"></div>' +
+      '<details class="dvr-deck"><summary>AUDIO DECK</summary>' +
+      '<div id="listen-deck"></div>' +
+      '<p class="dvr-deckoff" data-a="deckoff" hidden></p></details>' +
       '<ol class="dvr-list" data-a="list"></ol>' +
       '<div class="dvr-meta"></div></div>';
     doc.body.appendChild(pnl);
@@ -406,6 +430,7 @@
     }
 
     var bi = 0, si = 0, playing = false, cur = null, wordSpan = null, litBlock = null;
+    var srcLabel = opts.label || 'doc.player';   // a host page may name what it mounted
     var totalSent = blocks.reduce(function (a, b) { return a + b.sentences.length; }, 0);
     var doneSent = 0;
 
@@ -492,7 +517,7 @@
     function progress() {
       line.style.width = (totalSent ? clamp(doneSent / totalSent, 0, 1) * 100 : 0).toFixed(2) + '%';
       count.textContent = (bi + 1) + ' / ' + blocks.length;
-      title.textContent = playing && blocks[bi] ? blocks[bi].tag.toUpperCase() + ' · reading' : 'doc.player';
+      title.textContent = playing && blocks[bi] ? blocks[bi].tag.toUpperCase() + ' · reading' : srcLabel;
       markList();
     }
 
@@ -706,6 +731,95 @@
       }
       btn.title = 'Open the player and read this page aloud';
     });
+    // ── THE AUDIO DECK CONTRACT ──────────────────────────────────────────
+    //
+    // The dreamknob rack (static/audio_rack.js) owns NO state. It reads
+    // window.listenState() and writes back through these globals, then re-reads
+    // on the "mindx:listen" event — the same contract the mindX player exposes,
+    // so one island serves both sites and a knob can never disagree with the
+    // plain control beside it. The panel works with the rack never loaded.
+    //
+    // GAIN ABOVE 1.0 NEEDS WEB AUDIO. An <audio> element's `volume` is an
+    // ATTENUATOR: it clamps at 1.0 and cannot make anything louder. ANCIENT is a
+    // whisper by design and is still the quietest voice in the cast after
+    // loudness normalisation, so the deck has to be able to amplify — which
+    // means a GainNode, which means a graph. It is built lazily, because
+    // constructing an AudioContext before a gesture gets it suspended.
+    var actx = null, gainNode = null, analyser = null, srcNode = null;
+    var deckVol = 1;
+    // NOT `ensureAudio` — that name already belongs to the function that creates the
+    // <audio> ELEMENT, and a second `function ensureAudio()` in this scope would win
+    // by hoisting and silently stop the element from ever being made. The graph is a
+    // different thing from the element and now says so.
+    function ensureGraph() {
+      if (actx) return true;
+      if (!fileMode()) return false;        // live synthesis has no element to tap
+      ensureAudio();                        // the element first — the graph needs a source
+      if (!au) return false;
+      var AC = global.AudioContext || global.webkitAudioContext;
+      if (!AC) return false;
+      try {
+        actx = new AC();
+        srcNode = actx.createMediaElementSource(au);
+        gainNode = actx.createGain(); gainNode.gain.value = deckVol;
+        analyser = actx.createAnalyser(); analyser.fftSize = 2048;
+        srcNode.connect(gainNode); gainNode.connect(analyser); analyser.connect(actx.destination);
+      } catch (e) { actx = null; return false; }
+      return true;
+    }
+    function emit() { try { global.dispatchEvent(new global.Event('mindx:listen')); } catch (e) {} }
+
+    global.listenState = function () {
+      return {
+        playing: playing, ready: fileMode() || liveCanSpeak(),
+        mode: fileMode() ? 'file' : 'live',
+        part: fileMode() ? pi + 1 : bi + 1,
+        parts: fileMode() && A ? A.parts.length : blocks.length,
+        vol: deckVol, rate: state.rate, voice: state.voice,
+        voices: DVVoices.list().map(function (v) { return { id: v.id, label: v.name }; }),
+        analyser: analyser, ensureAudio: ensureGraph
+      };
+    };
+    global.listenVol = function (v) {
+      deckVol = clamp(+v || 0, 0, 4);
+      // Below 1.0 the element alone is enough and no graph is needed; above it,
+      // the element pins at 1.0 and the GainNode carries the rest.
+      if (deckVol <= 1 && !actx) { if (au) au.volume = deckVol; }
+      else if (ensureGraph()) { if (au) au.volume = 1; gainNode.gain.value = deckVol; }
+      else if (au) { au.volume = Math.min(deckVol, 1); }
+      emit();
+    };
+    global.listenSpeed = function (v) {
+      // THE SLIDER OWNS THE GRID, SO READ THE VALUE BACK OFF IT.
+      // The knob is continuous and the slider has step 0.02 from 0.6, so a knob
+      // value of 1.25 is not on the grid: the browser silently snapped the slider
+      // to a neighbour while state.rate kept 1.25, and the two faces of the one
+      // machine then disagreed — the exact thing this contract exists to prevent.
+      // Assigning and re-reading costs nothing and makes the input the authority
+      // on what its own value can be.
+      rate.value = clamp(+v || 1, 0.6, 1.6);
+      state.rate = +rate.value;
+      save();
+      if (fileMode() && au) { try { au.playbackRate = state.rate; } catch (e) {} }
+      emit();
+    };
+    global.listenVoice = function (id) {
+      if (!id || id === state.voice) return;
+      sel.value = id; sel.dispatchEvent(new global.Event('change')); emit();
+    };
+    global.listenToggle = function () { if (playing) pause(); else play(); emit(); };
+
+    // the deck is an enhancement, and says so when it is not there
+    var deckOff = pnl.querySelector('[data-a="deckoff"]');
+    global.setTimeout(function () {
+      var host = pnl.querySelector('#listen-deck');
+      if (host && !host.firstChild && deckOff) {
+        deckOff.hidden = false;
+        deckOff.textContent = 'The instrument deck did not load. Every control it offers is ' +
+          'also here as a plain control — nothing is missing but the knobs.';
+      }
+    }, 4000);
+
     function lookForAudio() {
       if (!global.DVDocAudio) { adoptManifest(null); return Promise.resolve(); }
       return DVDocAudio.manifest(docId, state.voice).then(adoptManifest).catch(function () { adoptManifest(null); });

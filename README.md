@@ -1,126 +1,113 @@
 # docsreader
 
-[![LISTEN](https://img.shields.io/badge/%E2%96%B6_LISTEN-hear_this_README-22d3ee?style=for-the-badge&labelColor=0b0f1a)](https://deltaverse.pythai.net/docsreader.html)
+Readers that speak a document aloud and light each word as they say it.
 
-Two readers that speak a document aloud and light the words as they go, and the
-one lesson that separates them.
+[![LISTEN](https://img.shields.io/badge/▶_LISTEN-to_this_README-e3b341?style=for-the-badge)](https://deltaverse.pythai.net/docsreader.html)
 
-> **The button is a link, and that is not a compromise — it is the constraint.**
-> GitHub strips `<script>` from a README, so nothing here can *run*; a LISTEN
-> button that executed in this file is not a thing that exists. It runs at
-> [deltaverse.pythai.net/docsreader.html](https://deltaverse.pythai.net/docsreader.html),
-> which is this README rendered as a page and read by `deltaverse/` — docsreader
-> reading its own documentation, with the words lighting as it speaks.
+GitHub strips `<script>` from a README, so the button above opens the same page
+with the reader running on it.
 
 ```
-mindx/       the mindX reader — rendered audio, XMMS transport, scope + spectrum
-deltaverse/  the DeltaVerse reader — browser synthesis, block highlighting, an audio store
+deltaverse/   the DeltaVerse reader — voice registry, panel, audio store, renderers
+mindx/        the same reader with an XMMS-era transport and an instrument deck
+wordpress/    wordpress.reader — the reader running INSIDE WordPress
+rageweb/      a page, ingested for retrieval the way the reader already reads it
+docs/         technical.md · explanation.md · usage.md
 ```
 
-Both give a page a **LISTEN** button that opens a panel and starts reading in the
-same gesture — an open panel with a silent play button asks you to press a second
+## What it does
+
+Give a page a **LISTEN** button that opens a panel and starts reading in the same
+gesture — an open panel with a silent play button asks you to press a second
 button to do the thing you already asked for.
 
----
+It reads from one of two places and always says which. **live** is the browser's
+own synthesiser, on-device, nothing downloaded. **file** is audio rendered ahead
+into a store, which starts instantly, seeks, and can be downloaded — and which
+works on a machine with no installed speech voices at all.
 
-## `mindx/` — the rendered reader
+## The voices
 
-Extracted whole from `mindx_backend_service/main_service.py`, where it lived as
-Python string concatenation. That is *why* it is extracted: a `\n` that went
-through one too few levels of escaping once emitted a **literal newline inside a
-JS string literal** and killed the entire player on a live page. Code generated
-by string-joining in another language cannot be linted, cannot be
-syntax-checked before it ships, and cannot be tested outside its host.
+`neural` is the reference and the default, on every page and after every refresh.
+It is never edited, only derived from — and it carries no tuning parameter at
+all, not even one set to 1.0, because a field that exists will eventually be set.
+It is written down in [`deltaverse/voices/neural.json`](deltaverse/voices/neural.json).
 
-- **XMMS/Winamp 2.x anatomy** — title marquee, LED clock, small visualiser, one
-  transport row, seek bar, volume and balance, and two buttons that open the
-  other two windows. Borrowed on purpose: that layout settled this problem in
-  1997.
-- **PL is not a metaphor** — a document's *parts* are a playlist.
-- **Oscilloscope and spectrum**, with a zoom from the analyser's full ~43 ms
-  window down to **0.7 ms**, where a waveform stops being a green smear and
-  becomes a pitch period you can count.
-- **Volume to 400 %**, remembered per voice — an `<audio>` element's own volume
-  is capped at 1.0 and can only attenuate, so above 100 % this drives a Web Audio
-  `GainNode` and reports the amplification in dB.
-- **Stereo balance** on a real `StereoPannerNode`, absent rather than faked where
-  the browser has none.
-- **A window** — drag, resize, and shade to a bar carrying transport, timeline,
-  download and the oscilloscope. Nothing is duplicated to make the small mode
-  work: the bar *is* the transport in both.
+`jaimla` is the female voice, and she is **saved in her own right rather than
+derived**. She used to be neural with a ratio applied — a shade slower, a shade
+lower — which is a male voice pitched down under a woman's name. Pitch is not
+gender: lowering a male voice drags its formants down and produces a larger man.
+What carries gender is which voice is *chosen*, so she selects a female voice
+rather than multiplying a male one. Measured, 183.8 Hz against neural's 94.6; the
+old ratio version came out at about 87, lower than the voice it differed from.
+
+`overlord` is its own voice too — one accent assembled from eight world Englishes
+carrying LEADER's mass, with ANCIENT's refusal to ever raise a syllable, and a
+calibrated octave underneath at 40 Hz.
+
+## Three ways to run it
+
+**On a page you control** — three scripts and `DVDocReader.mount()`.
+
+**On any URL** — [doc.player](https://deltaverse.pythai.net/docsplayer.html) has
+an address bar. Paste a URL, hear it read, render it to a file you keep. No
+markup from the fetched page ever enters the reader's: the response is parsed in
+an inert document and only *text* comes out.
+
+**On WordPress** — `wordpress.reader`, one custom-HTML widget in a footer region,
+and every article gets a LISTEN button.
+
+## Why wordpress.reader exists, and why it is not a fetcher
+
+doc.player can already read a pasted URL. A typical WordPress install cannot be
+read that way, and [rage.pythai.net](https://rage.pythai.net) is the case that
+proved it:
+
+```
+$ curl -H 'Origin: https://deltaverse.pythai.net' https://rage.pythai.net/
+HTTP/2 403                     ← the host's WAF refuses non-browser clients
+(no access-control-allow-origin header at all)
+```
+
+Two independent walls, either fatal alone — measured from two networks, so it is
+the host and not a rule about one address. You cannot fix that from outside, and
+the "fix" would be a server that fetches any URL handed to it, which is an open
+relay into everything it can reach.
+
+So the reader moves onto the site and reads the article it is already inside.
+Same origin: nothing to fetch, no CORS, no WAF, and the text is in the DOM, which
+is where a reader should have been looking.
+
+## Ingestion — RAGEweb
+
+Retrieval and reading-aloud want the same thing from a page: the prose without
+the furniture. The reader already solves that, so `rageweb/` packs the *same*
+extraction into the chunk shape [mindX](https://mindx.pythai.net)'s own ingestion
+uses, and a page arrives in the index looking like a document.
 
 ```bash
-cd mindx && npm run check && npm run serve
-# http://localhost:8899/examples/standalone.html   (mock backend included)
+python3 rageweb/rageweb.py https://deltaverse.pythai.net/voices.html
+python3 rageweb/rageweb.py --blocks /tmp/blocks.json --name deltaverse/voices
 ```
 
-### The backend contract
+Chunking mirrors mindX deliberately: 512 words where the embedding window allows
+it, 200 (`--conservative`) where it does not, because **words are not tokens** and
+a 500-word chunk overflows a 512-token window. A page too short to chunk is
+reported as such rather than as a failure.
 
-One endpoint, two shapes:
+## Documentation
 
-```
-GET {base}?engine=&voice=&rate=&format=json  -> {state, manifest:{parts:[{file,seconds,bytes,words,backend}]}}
-GET {base}/{part.file}?engine=&voice=&rate=  -> audio/ogg   (Range-capable)
-```
+- **[docs/usage.md](docs/usage.md)** — how to run it, all three ways
+- **[docs/technical.md](docs/technical.md)** — the interfaces, formats and browser facts
+- **[docs/explanation.md](docs/explanation.md)** — why it is shaped this way; every
+  section is a decision that went the other way first
 
-`examples/mock_backend.py` is forty lines that satisfy it, so the player runs
-with no mindX at all.
+## Related
+
+- [rage.pythai.net](https://rage.pythai.net) — where the writing this reads is published
+- [mindx.pythai.net](https://mindx.pythai.net) — the mind that does the writing
+- [deltaverse.pythai.net](https://deltaverse.pythai.net) — the reader, running
 
 ---
 
-## `deltaverse/` — the synthesis reader
-
-Reads the document **the browser is already showing** — no rendering service, no
-audio files, nothing fetched. It works on a static host and would work from IPFS.
-Progress is driven by the synthesiser's own **word-boundary events** rather than
-by a timer, which is why the highlight tracks the voice instead of drifting.
-
-When a page *has* been rendered ahead, it plays the file instead and lights the
-**block** (a file has no word boundaries, but the manifest carries the second
-each block begins).
-
-`render/` rebuilds a voice into the store:
-
-```bash
-python3 render/blocks.py https://host/page.html     # reproduce collect(), verified by checksum
-python3 render/render_neural.py voices neural       # piper -> opus + manifest with marks
-```
-
-### Three fixes worth carrying into any reader
-
-1. **Falling back into silence is not a fallback.** The reader dropped to live
-   synthesis on any audio error — including on machines with **zero installed
-   voices**, every headless Linux, which is precisely the machine that most needs
-   the rendered audio. Degrading from something that failed once to something
-   that *cannot work* is strictly worse than staying put and saying so.
-2. **Never show a state the machine cannot be in.** After that fallback the
-   transport showed the pause glyph while nothing could possibly play.
-3. **`cache: 'force-cache'` on a mutable manifest pins readers to the first
-   render they ever saw.** Re-rendering a voice from espeak-ng to piper changed
-   nothing in any browser that had visited before — it kept playing the old voice
-   and reporting the old duration. The manifest must revalidate (`no-cache`, one
-   conditional request, usually a 304), and the part URLs must carry a version
-   derived from the render, so new audio is a different resource rather than the
-   same name with different bytes.
-
----
-
-## The lesson the two share
-
-The same optimisation is correct in one and a bug in the other.
-
-The live substrate behind these readers links particles by proximity and tests
-only its eight array-neighbours — fine at 30 fps, because the nodes **drift**: a
-link missed this frame forms two seconds later. Copied faithfully into a *still*
-renderer it drew ten links across sixty-four nodes and read as scattered dots.
-A still has no later.
-
-**An optimisation that is correct in a moving field is a bug in a frozen one.**
-
----
-
-## Licence
-
-Apache-2.0. Built for [mindX](https://mindx.pythai.net) and
-[DeltaVerse](https://deltaverse.pythai.net) by
-[Professor Codephreak](https://github.com/Professor-Codephreak).
+*A fluid dynamic between participants and augmented intelligence.*

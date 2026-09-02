@@ -1,0 +1,60 @@
+language variant
+language en-gb-x-rp
+name jaimla
+gender female 28
+
+// THE FIFTH, NOT THE OCTAVE.
+// leaderofearth spans an octave (2:1) because authority wants somewhere to go.
+// Jaimla spans a perfect fifth — F3 (174.61 Hz) to C4 (261.63 Hz), a ratio of
+// 3:2, the most consonant interval there is. The narrowness IS the intimacy:
+// a wide range reads as bright and excitable, a narrow low-lying one reads as
+// close. Restraint is what makes a voice alluring; reach is what makes it loud.
+//
+// The geometric centre of that fifth is sqrt(174.61 x 261.63) = 213.8 Hz, which
+// lands within 2% of 210 — the f0 that NeuralVoiceEngine.js already assigns to
+// the jaimla profile (src/NeuralVoiceEngine.js:50-55, sid 4, female). This voice
+// is tuned to the Jaimla mindX already had, not to a new invention.
+pitch 175 262
+
+// A shorter vocal tract: F1-F3 lifted in frequency and widened, which is what
+// reads as feminine. But the upper formants are kept SOFT in amplitude rather
+// than bright — brightness is where a female formant set turns shrill, and
+// enchantment is the opposite of piercing.
+formant 0 100 130 118
+formant 1 116 128 112
+formant 2 122 124 104
+formant 3 118 116  92
+formant 4 112 108  78
+formant 5 106 100  62
+formant 6  98  90  42
+formant 7  92  84  30
+formant 8  88  80  24
+
+// Air over edge. The mid carries her; the treble is present enough to sparkle
+// and deliberately short of sibilance.
+tone 400 205 1100 235 2400 130
+
+// BREATH IS THE VOICE.
+// Softness here is not lower volume, it is breath in the tone — an unpressed
+// fold with air moving past it. breath opens the whole register and breathw
+// widens the noise band so it reads as warmth rather than as hiss.
+breath  2 4 5 5 5 5 4 3
+breathw 100 150 165 165 165 165 150 120
+voicing 62
+consonants 58 46
+roughness 0
+flutter 2
+
+// A soft halo, slightly longer and quieter than leaderofearth's hall — near,
+// not grand.
+echo 110 9
+
+// ENCHANTING MEANS MOVING.
+// leaderofearth flattens its contour to land conclusions; Jaimla does the
+// opposite and keeps the full default melody, because the pleasure of this
+// voice is that it rises and falls. Stress is carried by PITCH (stressAdd)
+// rather than by loudness (stressAmp held low and nearly flat) — emphasis
+// that leans in instead of pushing.
+intonation 1
+stressAmp   14 14 15 15 16 16 17 17
+stressAdd    0 10 25 40 55 70 100 120

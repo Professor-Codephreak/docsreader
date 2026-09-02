@@ -1,0 +1,93 @@
+language variant
+language en-earth
+name overlord
+gender male 60
+
+// OVERLORD — ancient AND leader, in one voice.
+//
+// This is not a third voice that resembles two others. Every number below is
+// taken from `ancient` or from `leaderofearth`, and where they disagree the
+// file says which one won and why. The two disagree about exactly one thing,
+// and it is the interesting thing: LEADER moves to persuade, ANCIENT refuses
+// to move at all. OVERLORD does not split the difference — it takes ancient's
+// refusal and leader's mass, because the top of a hierarchy does not persuade.
+//
+// The layering (overlay + octave) is NOT in this file. espeak renders one
+// voice per pass; depth is built in render_overlord.py, which mixes several
+// passes of THIS variant. See that file for the measured intervals.
+
+// LOWER THAN EITHER PARENT, AND FLATTER THAN BOTH.
+// leader is 70/142 (base/range) and measures f0 117.3 Hz; ancient is 98/98 —
+// a range of ZERO, which is the whole of ancient's argument. OVERLORD goes
+// below both and keeps ancient's refusal to modulate.
+//
+// MEASURED, NOT ASSUMED. espeak's `pitch` maps linearly to f0 at ~0.97x over
+// 40-98 (swept: 40->40.1, 50->47.2, 58->55.3, 70->67.0, 82->79.0, 98->95.0).
+// So 82 is 79.0 Hz: a fifth below leader, a tone and a half below ancient, and
+// still a speaking voice. An earlier draft sat at 58 -> 55.3 Hz, which is under
+// the bottom of the male range and turns to buzz on any small speaker. The
+// weight that draft was reaching for is not the body's job — it is the OCTAVE
+// layer's, and that layer is built in render_overlord.py at exactly half of
+// whatever this line says. Depth comes from underneath the voice, not from
+// dragging the voice down into the mud with it.
+//
+// The range is 10 units, not zero, only because a perfectly dead line reads as
+// a synthesiser rather than as a decision.
+pitch 82 92
+
+// LEADER'S CURVE, ANCIENT'S BOTTOM.
+// leader:  165 255 / 300 205 / 700 130 / 1400 150 / 3000 180  (presence 23.7%)
+// ancient: 180 190 / 380 150 / 1300 195 / 2900 140
+// The scoop at 700 Hz is leader's and it is why leader is heavy without being
+// muddy — it is kept exactly. The 3 kHz lift is also leader's and it is the
+// clarity; it is raised further (180 -> 195) because this voice sits an octave
+// lower and needs more help from the presence band, not less. The bottom
+// anchor at 165 is pushed to full 260 because the fundamental is now at 58.
+tone 165 260 300 210 700 128 1400 155 3000 195
+
+// Chest from leader, thinning from ancient.
+// F0-F2 are leader's (mass); F3-F5 sit between the two parents; F6-F8 take
+// ancient's steeper fall, which is what age does to the top of a voice. The
+// result has leader's body and ancient's decay.
+formant 0 102 134 150
+formant 1 100 128 144
+formant 2 102 114 124
+formant 3  98 106 102
+formant 4  92  99  84
+formant 5  86  88  60
+formant 6  76  80  38
+formant 7  70  76  24
+formant 8  66  72  18
+
+// THE TEXTURE IS ANCIENT'S, THE STEADINESS IS LEADER'S.
+// ancient has roughness 5 and flutter 3: rasp and the tremor of age. leader has
+// roughness 2 and flutter 0: no waver, ever. OVERLORD takes roughness 3 — the
+// rasp survives as grain but stops being a wobble — and leader's flutter 0,
+// because a tremor is a body failing and this voice is not failing.
+// voicing takes leader's 96 (full fold closure, real tone) over ancient's 54
+// (a whisper with something behind it): at 58 Hz there is no room for breath.
+flutter 0
+roughness 3
+voicing 96
+breath 0 1 1 1 1 1 1 0
+breathw 60 70 80 80 80 80 70 60
+
+// Consonants are pushed above BOTH parents (leader 92 80, ancient 92 84).
+// A voice this low loses the top of every stop and fricative; the enunciation
+// en-earth was built for has to be paid for again down here.
+consonants 96 88
+
+// ancient 80/12, leader 165/20. OVERLORD takes leader's room and lengthens it:
+// the biggest space in the set, because it is the last voice you hear.
+echo 180 22
+
+// ANCIENT WINS THE ARGUMENT.
+// leader still lifts its top two stress levels (+55, +80 cents) — it drives.
+// ancient lifts NOTHING: stressAdd is zero at every level, and emphasis exists
+// only as amplitude. That is the difference between commanding and deciding,
+// and OVERLORD decides. So stressAdd is ancient's (all zero) and stressAmp is
+// leader's curve carried further (29/32 -> 33/38): nothing is ever raised in
+// pitch to make a point, and what does the pointing is weight.
+intonation 3
+stressAmp   16 16 18 21 24 28 33 38
+stressAdd    0  0  0  0  0  0  0  0

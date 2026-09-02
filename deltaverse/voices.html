@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>DELTAVERSE — the voices</title>
+<meta name="description" content="The DeltaVerse voices: neural is the reference and is not edited; every other voice — Jaimla the machine-learning agent, OVERLORD, Ovie, Participant — is a stated derivation of it. Press LISTEN and the page reads itself." />
+<meta name="author" content="DeltaVerse — bankon.eth (OVERLORD)" />
+<meta name="robots" content="index, follow, max-snippet:-1" />
+<meta name="theme-color" content="#000000" />
+<link rel="canonical" href="https://deltaverse.pythai.net/voices" />
+<meta property="og:title" content="DELTAVERSE — the voices" />
+<meta property="og:description" content="neural is the reference and is not edited. Every other voice is derived from it — and says what the derivation is." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://deltaverse.pythai.net/voices" />
+<meta name="twitter:card" content="summary" />
+<style>
+:root{
+  --bg0:#000; --bg1:#080a16; --txt:#fff;
+  --muted:rgba(255,255,255,.72); --quiet:rgba(255,255,255,.38); --faint:rgba(255,255,255,.13);
+  --violet:#9d4edd; --cyan:#22d3ee;
+  --cy:34,211,238; --vi:157,78,221; --am:255,176,84;
+  --phi:1.6180339887;
+  --sans:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:radial-gradient(circle at 50% 0%,var(--bg1) 0%,var(--bg0) 62%);
+  color:var(--muted);font-family:var(--sans);line-height:1.65;-webkit-font-smoothing:antialiased;min-height:100vh}
+a{color:inherit}
+.wrap{max-width:880px;margin:0 auto;padding:0 26px 90px}
+.top{padding:54px 0 34px;text-align:center;border-bottom:1px solid var(--faint)}
+.delta{font-size:clamp(1.9rem,4vw,2.7rem);color:var(--txt);opacity:.92;
+  text-shadow:0 0 30px rgba(157,78,221,.35),0 0 20px rgba(34,211,238,.22);margin-bottom:.22em}
+.top h1{font-size:clamp(1.4rem,3.6vw,2.1rem);letter-spacing:.3em;padding-left:.3em;color:var(--txt);font-weight:400;
+  text-shadow:0 0 28px rgba(157,78,221,.14),0 0 22px rgba(34,211,238,.10)}
+.top .sub{margin-top:.9rem;font-size:.82rem;letter-spacing:.2em;text-transform:uppercase;color:var(--quiet)}
+.back{display:inline-block;margin-top:20px;font-family:var(--mono);font-size:11px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--quiet);text-decoration:none;transition:color .25s,text-shadow .25s}
+.back:hover{color:#fff;text-shadow:0 0 16px rgba(34,211,238,.55)}
+h2{font-family:var(--mono);font-size:11.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--cyan);
+  margin:52px 0 6px;opacity:.85}
+h3{font-size:1rem;color:var(--txt);font-weight:600;margin:26px 0 6px}
+p{margin:10px 0;font-size:15px}
+p.lead{font-size:16.5px;color:var(--muted)}
+.note{font-size:13px;color:var(--quiet)}
+blockquote{margin:16px 0;padding:12px 0 12px 20px;border-left:2px solid var(--violet);
+  font-size:16px;color:var(--txt);opacity:.94}
+code{font-family:var(--mono);font-size:12.5px;color:var(--cyan);background:rgba(34,211,238,.07);
+  padding:1px 5px;border-radius:4px}
+.rows{display:flex;flex-direction:column;gap:1px;margin-top:16px;
+  background:var(--faint);border:1px solid var(--faint);border-radius:10px;overflow:hidden}
+.v{display:flex;align-items:flex-start;gap:16px;padding:15px 16px;background:#04040a;
+  transition:background .22s ease,box-shadow .22s ease}
+.v:hover{background:#0a0a18;box-shadow:inset 3px 0 0 var(--violet)}
+.v .n{font-family:var(--mono);font-size:13px;color:var(--cyan);flex:0 0 128px;letter-spacing:.05em}
+.v .n em{display:block;font-style:normal;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--quiet);margin-top:4px}
+.v .c{flex:1;min-width:0;font-size:13.5px;color:var(--muted)}
+.v .c .d{display:block;margin-top:5px;font-family:var(--mono);font-size:10.5px;color:var(--quiet)}
+.v .a{flex:0 0 auto}
+.v.ref{box-shadow:inset 3px 0 0 rgba(255,176,84,.7)}
+.v.ref .n{color:rgba(255,176,84,.95)}
+button.say{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;cursor:pointer;
+  padding:6px 11px;border-radius:7px;color:var(--muted);background:rgba(255,255,255,.03);
+  border:1px solid var(--faint);transition:color .2s,border-color .2s,background .2s}
+button.say:hover{color:#fff;border-color:rgba(34,211,238,.6);background:rgba(34,211,238,.09)}
+button.say.on{color:#04040a;background:var(--cyan);border-color:var(--cyan)}
+.lock{display:inline-block;margin-top:14px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+  color:rgba(255,176,84,.9);border:1px solid rgba(255,176,84,.3);background:rgba(255,176,84,.06);
+  padding:9px 13px;border-radius:8px}
+.foot{margin-top:60px;padding-top:22px;border-top:1px solid var(--faint);
+  font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--quiet);
+  display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+.foot a{color:var(--quiet);text-decoration:none;padding:6px 8px;transition:color .25s,text-shadow .25s}
+.foot a:hover{color:#fff;text-shadow:0 0 16px rgba(34,211,238,.55)}
+#nosynth{display:none;margin-top:16px;font-size:13px;color:rgba(255,176,84,.85)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="delta">Δ</div>
+    <h1>THE VOICES</h1>
+    <p class="sub">neural speaks the realm · Jaimla speaks in it</p>
+    <a class="back" href="/">← back to Δ DELTAVERSE</a>
+  </header>
+
+  <h2>The rule</h2>
+  <p class="lead"><b>neural</b> is the voice of the DeltaVerse. It is the default on every page and after
+    every refresh, and it is not edited.</p>
+
+  <blockquote>A reader who has heard the realm speak once should hear the same voice next time, on every
+    page, whatever anyone has been auditioning.</blockquote>
+
+  <p>That is the whole reason the reference is fixed. Try any other voice you like — the choice lasts for
+    as long as you are listening, and the next page you open speaks in neural again. An audition is not a
+    preference.</p>
+
+  <h2>What a voice is here</h2>
+  <p>Not an audio file and not a model. The browser owns the synthesis, on-device where the platform has
+    it; nothing is downloaded and nothing leaves this page. A DeltaVerse voice is three things:</p>
+  <ol style="margin:12px 0 0 20px;font-size:14px">
+    <li style="margin:7px 0"><b>A selection rule</b> — an ordered list of patterns over the platform's own
+      voices, first match wins, so the best voice actually present is used rather than a name that may not
+      exist. neural prefers the genuinely neural ones: Natural, Neural, Premium, Enhanced, WaveNet, Siri.</li>
+    <li style="margin:7px 0"><b>A prosody</b> — rate, pitch, volume. The two saved voices each hold their
+      own; the derived voices state a ratio from one of them rather than an absolute, so improving a saved
+      voice improves everything measured against it.</li>
+    <li style="margin:7px 0"><b>A character</b> — who is speaking, in one line.</li>
+  </ol>
+
+  <h2>The voices</h2>
+  <div class="rows" id="rows"></div>
+  <p id="nosynth" data-noread></p>
+
+  <p class="lock">◉ <b>neural</b> and <b>Jaimla</b> are saved voices: press SAY to hear either, but neither
+    has an edit control. The derived voices below them do.</p>
+
+  <h2>Jaimla — the female voice</h2>
+  <p>Jaimla is the machine-learning agent of the realm, and she is the realm's female voice. She is not a
+    narrator of the DeltaVerse; she is <em>in</em> it, which is why she reads as a participant rather than
+    as an announcer. She is unhurried — taking her time, not dragging — because an agent that considers
+    before she answers should sound like one.</p>
+
+  <p>Jaimla is <b>saved in her own right</b>, exactly as neural is, and that is a correction rather than a
+    flourish. She used to be neural with a ratio applied: a shade slower, a shade lower. That does not make
+    a woman. <b>Pitch is not gender.</b> Lowering a male voice drags its resonances down with it and
+    produces a larger man; raising one produces a man in falsetto. What actually carries a voice's gender
+    is <em>which voice is chosen</em>, so Jaimla now asks the platform for a female voice by name and holds
+    her own settings, answering to nobody's multiplier.</p>
+
+  <p>Where this page is played from a recording rather than spoken live, the same holds and it was measured:
+    Jaimla is rendered from a female model at <b>184&nbsp;Hz</b> against neural's <b>95&nbsp;Hz</b>. The old
+    ratio-on-neural version came out at about 87&nbsp;Hz — lower than the voice it was supposed to differ
+    from.</p>
+
+  <h2>The reader</h2>
+  <p><b>LISTEN</b>, beside the heading of this page, opens the voice panel and begins reading in the same
+    gesture. It reads the document the browser is already showing, and it lights each word as it is said.</p>
+
+  <p>There are two ways it can do that, and the panel says which it is using. <b>live</b> means your own
+    browser is speaking, on-device: nothing is downloaded and nothing leaves the page. <b>file</b> means
+    this page was rendered ahead into an audio file, which is what you will hear if a recording exists in
+    the voice you picked — it starts instantly, seeks, and can be downloaded. The player prefers the file,
+    because someone who presses LISTEN twice wants the second press to be immediate.</p>
+
+  <p>When it is speaking live, the highlight follows the synthesiser's own word-boundary events rather than
+    a timer; when it is playing a file, it follows marks measured at the moment the file was made. Either
+    way the word that is lit is the word you are hearing, not an estimate of it.</p>
+
+  <p>To read something that is <em>not</em> this page, there is <a href="/docsplayer.html">doc.player</a>:
+    paste any URL and hear it read, with the option to render it to a file you keep.</p>
+
+  <h2>The deck</h2>
+  <p>Open <b>AUDIO DECK</b> in the player and the controls appear a second time as instruments —
+    a gain knob, a level meter, a speed control, a voice selector and a transport. It is the same
+    machine with two faces: the knobs and the plain controls read and write the same values, so they
+    cannot disagree, and the player works exactly as well with the deck never loaded.</p>
+
+  <p>The gain knob goes to <b>400%</b>, and above 100% it is genuinely amplifying rather than just
+    un-attenuating. An <code>&lt;audio&gt;</code> element's own volume can only ever turn a sound
+    <em>down</em> — it clamps at 1.0 — so past that point a Web Audio gain stage carries the rest.
+    ANCIENT needs it: that voice is a whisper by design and is still the quietest thing in the cast
+    after loudness normalisation. The taper is squared, because loudness is not linear in the ear and
+    a linear knob wastes most of its travel where nothing much changes.</p>
+
+  <h2>Colophon</h2>
+  <p>The instruments are <a href="https://git.dreamodus.software/Dreamodus/DreamKnob">DreamKnob</a>
+    (<code>dreamknob</code>) — knobs, meters, segment displays and transports drawn as studio hardware,
+    which is the right shape for controls you adjust by feel rather than by number.</p>
+  <p>The JavaScript idiom here — plain modules, no framework on the page itself, one behaviour per file —
+    follows <a href="https://github.com/javascriptit">javascriptit</a>, and the interaction pieces
+    (drag, drop, resize, the small reusable behaviours) follow
+    <a href="https://github.com/mlodular">mlodular</a>. Both are the reference for what gets written by
+    hand here and what gets reached for from a library.</p>
+
+  <div class="foot">
+    <a href="/">Δ DELTAVERSE</a>
+    <a href="/docsplayer.html">DOC.PLAYER</a>
+    <a href="/map.html">THE MAP</a>
+    <a href="/periphery.html">THE PERIPHERY</a>
+    <a href="/chainmarketcap.html">CHAINMARKETCAP</a>
+  </div>
+</div>
+
+<script src="/engine/ngn/voices.js?v=e669d523"></script>
+<script src="/engine/ngn/doc-audio.js?v=e669d523"></script>
+<script src="/engine/ngn/doc-reader.js?v=e669d523"></script>
+<script defer src="/engine/ngn/audio_rack.js"></script>
+<script>
+(function(){
+  var rows = document.getElementById('rows');
+  var note = document.getElementById('nosynth');
+  function esc(s){ return String(s).replace(/[&<>]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }); }
+
+  function render(){
+    if (!window.DVVoices) return;
+    rows.innerHTML = '';
+    DVVoices.list().forEach(function(v){
+      var row = document.createElement('div');
+      row.className = 'v' + (v.immutable ? ' ref' : '');
+      var pv = v.voice ? v.voice.name : 'the platform default';
+      // three labels, not two: neural is the reference, Jaimla is saved beside it,
+      // and everything else states what it is a ratio OF.
+      var tag = v.reference ? 'the reference' : v.saved ? 'saved' : 'derived';
+      row.innerHTML =
+        '<div class="n">' + esc(v.name) + '<em>' + tag + '</em></div>' +
+        '<div class="c">' + esc(v.character) +
+          '<span class="d">' + (v.immutable
+            ? 'rate ' + v.prosody.rate.toFixed(2) + ' · pitch ' + v.prosody.pitch.toFixed(2) +
+              ' · not edited' + (v.gender ? ' · ' + esc(v.gender) : '')
+            : esc(v.derivedFrom) + ' · rate ' + v.prosody.rate.toFixed(2) + ' · pitch ' + v.prosody.pitch.toFixed(2) +
+              (v.edited ? ' · edited locally' : '')) +
+          '<br>speaking through ' + esc(pv) + '</span></div>' +
+        '<div class="a"><button class="say" type="button" data-v="' + esc(v.id) + '">SAY</button></div>';
+      rows.appendChild(row);
+    });
+  }
+
+  var LINE = 'The DeltaVerse is a fluid dynamic between participants and augmented intelligence. I am %s.';
+  rows.addEventListener('click', function(e){
+    var b = e.target.closest && e.target.closest('button.say');
+    if (!b || !window.DVVoices) return;
+    DVVoices.cancel();
+    [].forEach.call(rows.querySelectorAll('.say'), function(x){ x.classList.remove('on'); });
+    var v = DVVoices.get(b.dataset.v);
+    b.classList.add('on');
+    var u = DVVoices.speak(LINE.replace('%s', v.name), { voice: v.id });
+    if (u) u.onend = u.onerror = function(){ b.classList.remove('on'); };
+  });
+
+  // The API existing is not the same as speech being possible: a platform can expose speechSynthesis
+  // and enumerate zero voices, and then every utterance is dropped in silence. Say so rather than
+  // showing controls that do nothing.
+  // The player is ALWAYS mounted. A platform with no installed voices cannot synthesise live, but it
+  // can still play this page from the audio store (/audio/voices/<voice>/), which is an ordinary file —
+  // and it is exactly the machine that most needs the rendering. What the missing voices really cost is
+  // the per-row SAY demonstration, which is live synthesis and has nothing to fall back on.
+  if (window.DVVoices) DVVoices.ready().then(function(){
+    render();
+    if (window.DVDocReader) DVDocReader.mount();
+    if (DVVoices.usable()) return;
+    note.style.display = 'block';
+    note.innerHTML = 'This browser exposes a speech synthesiser but has <b>no installed voices</b>, so the ' +
+      'per-voice <b>SAY</b> demonstrations below cannot run — live synthesis has nothing to speak through. ' +
+      '<b>LISTEN still works</b>: this page is rendered ahead into the audio store, so the player reads it ' +
+      'from a file, which also seeks and downloads. ' +
+      '<br>To hear the voices themselves on Linux: install <code>speech-dispatcher</code> and a voice such ' +
+      'as <code>espeak-ng</code>. On macOS, iOS, Windows and Android voices ship with the system.';
+    [].forEach.call(rows.querySelectorAll('.say'), function(b){
+      b.disabled = true; b.style.opacity = '.4'; b.title = 'live synthesis needs an installed voice';
+    });
+  });
+})();
+</script>
+</body>
+</html>

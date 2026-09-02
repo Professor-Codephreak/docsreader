@@ -1,0 +1,69 @@
+language variant
+language en-earth
+name leaderofearth
+gender male 50
+
+// THE ACCENT IS NOT IN THIS FILE ANY MORE.
+// This variant used to sit on en-029 and, before that, on en-gb-x-rp. It now
+// sits on `en-earth` (voices/en-earth, installed to <data>/voices/mindx/) —
+// one accent assembled from the accents of the world: royal, US, Australian,
+// Indian, Mexican, Brazilian, Brooklyn and Slavic, chosen where several of them
+// AGREE so that none is being imitated. It had to move out of this file because
+// espeak-ng SILENTLY IGNORES `replace` in a !v/ variant — verified, en-gb+rtest
+// is byte-identical to en-gb. Only a full voice file can redefine a phoneme.
+// What remains here is the BODY: pitch, overtones, mass and contour.
+
+// DEEPER, BECAUSE AUTHORITY IS LOW.
+// Was 82/164 and measured 138.7 Hz median. Now 70/142 and measures 117.9 Hz —
+// three semitones down, into the range a bass actually speaks in. espeak's two
+// numbers are base and range, not floor and ceiling; the range comes down with
+// the base so the voice never lifts into brightness when it insists.
+pitch 70 142
+
+// THE CURVE THAT IS BOTH HEAVY AND CLEAR.
+// The old curve peaked at 330 Hz — in the mud — and crushed everything above
+// 1.3 kHz to 86. It measured 12.4% of its energy in the 2-5 kHz presence band,
+// which is where consonants live, and it sounded dark because it WAS dark.
+// This is a broadcast-authority shape instead: full at the fundamental octave,
+// SCOOPED at 700 Hz where boom turns to mud, and lifted again at 3 kHz.
+// Presence measured 12.4% -> 23.7%. That is the clarity, and it was bought by
+// removing mud, not by adding treble.
+tone 165 255 300 205 700 130 1400 150 3000 180
+
+// Chest at the bottom, articulation restored in the upper-mid. F0/F1 carry the
+// mass; F3/F4 come back up (98->104, 90->98) so the resounding part of
+// "resounding truth" has somewhere to sound. F5-F8 stay damped: no glare.
+formant 0 100 132 146
+formant 1  98 126 140
+formant 2 100 112 122
+formant 3  96 104 100
+formant 4  90  98  84
+formant 5  84  86  62
+formant 6  76  80  40
+formant 7  72  76  28
+formant 8  68  72  20
+
+// CONFIDENCE IS THE ABSENCE OF WAVER.
+// flutter 0: the pitch does not hesitate. roughness comes DOWN 3 -> 2: the old
+// value was menace, and menace is not authority — irregularity is the enemy of
+// clarity. voicing up 88 -> 96 for fuller fold closure and more chest.
+// The echo is bigger (140/18 -> 165/20): a room, which is what "resounding"
+// literally means. breath stays nearly shut; this voice is not confiding.
+flutter 0
+roughness 2
+breath 0 1 1 1 1 1 1 0
+breathw 60 70 80 80 80 80 70 60
+voicing 96
+consonants 92 80
+echo 165 20
+
+// DIRECTION FROM STRENGTH, NOT FROM PITCH.
+// The old stress curve lifted the top levels 95 and 140 cents. A voice that
+// goes UP to insist is pleading; a voice that gets LOUDER and LONGER to insist
+// is commanding. So emphasis moves out of stressAdd (95/140 -> 55/80) and into
+// stressAmp (23/24 -> 29/32). The line drives forward and lands flat.
+// The pause between clauses is not here: it is `words 2` and the lengthened
+// stressLength in en-earth, which belong to the accent, not the body.
+intonation 3
+stressAmp   16 16 18 20 22 25 29 32
+stressAdd    0  0  6 12 20 30 55  80

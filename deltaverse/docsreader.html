@@ -1,0 +1,102 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>docsreader — read aloud by itself | DeltaVerse</title>
+<meta name="description" content="The docsreader README, read aloud by docsreader. GitHub strips script from a README, so the LISTEN button lives here.">
+<link rel="preconnect" href="https://deltaverse.pythai.net">
+<style>
+:root{--bg0:#000;--bg1:#080a16;--txt:#fff;--muted:rgba(255,255,255,.76);--quiet:rgba(255,255,255,.42);
+  --cy:34,211,238;--vi:157,78,221;--am:255,176,84;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(120% 70% at 50% 0%,var(--bg1) 0%,var(--bg0) 60%);
+  color:var(--txt);font-family:var(--sans);line-height:1.65}
+.wrap{max-width:80ch;margin:0 auto;padding:46px 24px 100px}
+h1{font-size:clamp(28px,5vw,42px);margin:0 0 6px;letter-spacing:-.015em}
+h2{margin:38px 0 8px;font-size:12px;font-family:var(--mono);letter-spacing:.2em;text-transform:uppercase;color:rgb(var(--am))}
+h3,h4{margin:24px 0 6px;font-size:17px}
+p{margin:0 0 14px;color:var(--muted)}
+li{color:var(--muted);margin:4px 0}
+a{color:rgb(var(--cy));text-decoration:none;border-bottom:1px solid rgba(var(--cy),.3)}
+code{font-family:var(--mono);font-size:.9em;color:rgb(var(--am));background:rgba(255,255,255,.05);padding:1px 5px;border-radius:4px}
+pre{font-family:var(--mono);font-size:12px;line-height:1.6;color:var(--quiet);background:rgba(0,0,0,.4);
+  border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:14px 16px;overflow-x:auto;margin:0 0 16px}
+pre code{background:none;padding:0;color:inherit}
+hr{border:0;height:1px;margin:32px 0;background:linear-gradient(90deg,rgba(var(--cy),.4),rgba(var(--vi),.3),transparent)}
+table{border-collapse:collapse;margin:0 0 6px;width:100%}
+td{padding:6px 10px 6px 0;border-bottom:1px solid rgba(255,255,255,.07);color:var(--muted);font-size:14px;vertical-align:top}
+.src{font-family:var(--mono);font-size:11px;color:var(--quiet);margin-top:6px}
+.foot{margin-top:56px;padding-top:18px;border-top:1px solid rgba(255,255,255,.12);
+  font-family:var(--mono);font-size:11px;color:var(--quiet);line-height:1.9}
+</style>
+
+<div class="wrap">
+<h1>docsreader</h1>
+<p>Two readers that speak a document aloud and light the words as they go, and the one lesson that separates them.</p>
+<pre data-noread>
+mindx/       the mindX reader — rendered audio, XMMS transport, scope + spectrum
+deltaverse/  the DeltaVerse reader — browser synthesis, block highlighting, an audio store
+</pre>
+<p>Both give a page a <strong>LISTEN</strong> button that opens a panel and starts reading in the same gesture — an open panel with a silent play button asks you to press a second button to do the thing you already asked for.</p>
+<hr>
+<h2><code>mindx/</code> — the rendered reader</h2>
+<p>It lives in its own files, as JavaScript. It used to be assembled as strings by the server that served it, and one escape too few put a real newline inside a string literal and took the whole player down on a live page. Code written by one language to be run by another cannot be linted, cannot be syntax-checked before it ships, and cannot be tested outside the thing that generates it — so it is written directly now.</p>
+<li><strong>XMMS/Winamp 2.x anatomy</strong> — title marquee, LED clock, small visualiser, one</li>
+<p>transport row, seek bar, volume and balance, and two buttons that open the other two windows. Borrowed on purpose: that layout settled this problem in 1997.</p>
+<li><strong>PL is not a metaphor</strong> — a document&#x27;s *parts* are a playlist.</li>
+<li><strong>Oscilloscope and spectrum</strong>, with a zoom from the analyser&#x27;s full ~43 ms</li>
+<p>window down to <strong>0.7 ms</strong>, where a waveform stops being a green smear and becomes a pitch period you can count.</p>
+<li><strong>Volume to 400 %</strong>, remembered per voice — an <code>&lt;audio&gt;</code> element&#x27;s own volume</li>
+<p>is capped at 1.0 and can only attenuate, so above 100 % this drives a Web Audio <code>GainNode</code> and reports the amplification in dB.</p>
+<li><strong>Stereo balance</strong> on a real <code>StereoPannerNode</code>, absent rather than faked where</li>
+<p>the browser has none.</p>
+<li><strong>A window</strong> — drag, resize, and shade to a bar carrying transport, timeline,</li>
+<p>download and the oscilloscope. Nothing is duplicated to make the small mode work: the bar *is* the transport in both.</p>
+<pre data-noread>
+cd mindx &amp;&amp; npm run check &amp;&amp; npm run serve
+# http://localhost:8899/examples/standalone.html   (mock backend included)
+</pre>
+<h3>The backend contract</h3>
+<p>One endpoint, two shapes:</p>
+<pre data-noread>
+GET {base}?engine=&amp;voice=&amp;rate=&amp;format=json  -&gt; {state, manifest:{parts:[{file,seconds,bytes,words,backend}]}}
+GET {base}/{part.file}?engine=&amp;voice=&amp;rate=  -&gt; audio/ogg   (Range-capable)
+</pre>
+<p><code>examples/mock_backend.py</code> is forty lines that satisfy it, so the player runs with no mindX at all.</p>
+<hr>
+<h2><code>deltaverse/</code> — the synthesis reader</h2>
+<p>Reads the document <strong>the browser is already showing</strong> — no rendering service, no audio files, nothing fetched. It works on a static host and would work from IPFS. Progress is driven by the synthesiser&#x27;s own <strong>word-boundary events</strong> rather than by a timer, which is why the highlight tracks the voice instead of drifting.</p>
+<p>When a page *has* been rendered ahead, it plays the file instead and lights the <strong>block</strong> (a file has no word boundaries, but the manifest carries the second each block begins).</p>
+<p><code>render/</code> rebuilds a voice into the store:</p>
+<pre data-noread>
+python3 render/blocks.py https://host/page.html     # reproduce collect(), verified by checksum
+python3 render/render_neural.py voices neural       # piper -&gt; opus + manifest with marks
+</pre>
+<h3>Three fixes worth carrying into any reader</h3>
+<p>1. <strong>Falling back into silence is not a fallback.</strong> The reader dropped to live synthesis on any audio error — including on machines with <strong>zero installed voices</strong>, every headless Linux, which is precisely the machine that most needs the rendered audio. Degrading from something that failed once to something that *cannot work* is strictly worse than staying put and saying so. 2. <strong>Never show a state the machine cannot be in.</strong> After that fallback the transport showed the pause glyph while nothing could possibly play. 3. <strong><code>cache: &#x27;force-cache&#x27;</code> on a mutable manifest pins readers to the first render they ever saw.</strong> Re-rendering a voice from espeak-ng to piper changed nothing in any browser that had visited before — it kept playing the old voice and reporting the old duration. The manifest must revalidate (<code>no-cache</code>, one conditional request, usually a 304), and the part URLs must carry a version derived from the render, so new audio is a different resource rather than the same name with different bytes.</p>
+<hr>
+<h2>The lesson the two share</h2>
+<p>The same optimisation is correct in one and a bug in the other.</p>
+<p>The live substrate behind these readers links particles by proximity and tests only its eight array-neighbours — fine at 30 fps, because the nodes <strong>drift</strong>: a link missed this frame forms two seconds later. Copied faithfully into a *still* renderer it drew ten links across sixty-four nodes and read as scattered dots. A still has no later.</p>
+<p><strong>An optimisation that is correct in a moving field is a bug in a frozen one.</strong></p>
+<hr>
+<h2>Licence</h2>
+<p>Apache-2.0. Built for <a href="https://mindx.pythai.net">mindX</a> and <a href="https://deltaverse.pythai.net">DeltaVerse</a> by <a href="https://github.com/Professor-Codephreak">Professor Codephreak</a>.</p>
+
+<div class="foot" data-noread>
+  This page is the <a href="https://github.com/Professor-Codephreak/docsreader">docsreader</a>
+  README, read aloud by docsreader. GitHub strips <code>&lt;script&gt;</code> from a README, so a
+  LISTEN button cannot run there — it runs here instead, and the badge in the README links to it.
+</div>
+</div>
+
+<script src="/engine/ngn/voices.js"></script>
+<script src="/engine/ngn/doc-audio.js"></script>
+<script src="/engine/ngn/doc-reader.js"></script>
+<script defer src="/engine/ngn/audio_rack.js"></script>
+<script>
+  if (window.DVVoices) DVVoices.ready().then(function () {
+    if (window.DVDocReader) DVDocReader.mount();
+  });
+</script>
