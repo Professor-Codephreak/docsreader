@@ -1,0 +1,162 @@
+/* doc.player styles — extracted from the rendered page, not retyped.
+ * @media blocks are preserved as blocks: flattening them let the
+ * max-width:900px override (left:8px;right:8px;width:auto) escape to the
+ * top level and win, which made the panel full-width on every screen. */
+.ldeck{margin:8px 0 4px;padding:0;background:transparent;max-width:100%;overflow-x:auto}
+.lskills{margin:8px 0 4px;padding:10px 12px;background:#0a0e16;border:1px solid #21262d;border-radius:6px;
+  color:#8b949e;font:11px/1.5 ui-monospace,'SF Mono',Menlo,monospace;white-space:pre;overflow-x:auto;max-width:100%}
+.lskills[hidden]{display:none}
+.ldeck[hidden]{display:none}
+/* ── the listen panel: one container for the whole voice UI ──────────────────
+   The controls used to be a 44px-wide stack of loose buttons pinned to the
+   right edge, with the oscilloscope living somewhere else entirely — at the
+   BOTTOM of the document, hundreds of lines away from the PLAY button that
+   started it. This is one panel: transport, sliders, scope, and two accordions,
+   in the order you use them. It is closed until LISTEN asks for it, because a
+   document page is for reading. */
+.lbtn{display:inline-flex;align-items:center;gap:5px;vertical-align:middle;margin-left:14px;
+  padding:3px 10px;border:1px solid #1f6feb;border-radius:4px;background:rgba(31,111,235,.12);
+  color:#58a6ff;font:600 11px/1.4 'SF Mono',ui-monospace,monospace;letter-spacing:.12em;
+  cursor:pointer;transition:all .15s}
+.lbtn:hover{background:rgba(31,111,235,.25);color:#fff}
+.lbtn.on{background:#1f6feb;border-color:#1f6feb;color:#fff}
+.lbtn .lbtn-i{font-size:9px}
+.vpanel{position:fixed;right:52px;top:50%;transform:translateY(-50%);z-index:21;width:308px;
+  min-width:292px;max-width:96vw;max-height:88vh;overflow:auto;resize:both;
+  display:flex;flex-direction:column;gap:7px;padding:10px;
+  border:1px solid #30363d;border-radius:8px;background:rgba(6,10,18,.975);
+  box-shadow:0 12px 40px rgba(0,0,0,.75),0 0 0 1px rgba(88,166,255,.07);backdrop-filter:blur(12px)}
+/* dragged: the panel stops being pinned to the right edge and owns its own left/top */
+.vpanel.moved{right:auto;transform:none}
+/* TRANSPARENCY. A player that sits over the paragraph you are reading is a
+   player you want to see THROUGH, not one you want to keep moving. Three steps,
+   cycled from the titlebar; hovering or focusing anything inside always brings
+   it back to solid, so a translucent player is still a usable one rather than a
+   decoration you have to un-fade before you can press anything. */
+.vpanel{opacity:var(--vp-op,1);transition:opacity .18s ease}
+.vpanel:hover,.vpanel:focus-within{opacity:1}
+.vpanel .vhead button.on{color:#e3b341}
+/* SHADE — XMMS windowshade. Everything folds away except the spine: transport,
+   timeline, download. Nothing is duplicated to make this work; the bar IS the
+   transport in both modes, which is why it can be the minimal form at all. */
+.vpanel.shaded{width:auto;min-width:360px;resize:horizontal;max-height:none;overflow:visible}
+.vpanel.shaded .xbody{display:none}
+/* shaded: keep the scope, drop the readout beside it, and lay it out flat */
+.vpanel.shaded .xmeta{display:none}
+.vpanel.shaded .xvis{width:100%;height:30px}
+.vpanel.shaded .xtop{display:block}
+.vpanel .xbody{display:flex;flex-direction:column;gap:7px;min-width:0}
+.vhead{cursor:grab;user-select:none}
+.vhead.dragging{cursor:grabbing}
+.vpanel[hidden]{display:none}
+.vpanel .vhead{display:flex;align-items:center;justify-content:space-between;
+  font:600 10px/1 'SF Mono',monospace;letter-spacing:.18em;color:#9aa4b1}
+.vpanel .vhead button{width:20px;height:20px;font-size:13px;line-height:1;border:0;background:none;
+  color:#9aa4b1;cursor:pointer;padding:0;border-radius:3px}
+.vpanel .vhead button:hover{background:rgba(255,255,255,.08)}
+.vpanel .vhead button:hover{color:#e6edf3}
+.vpanel .vrow{display:flex;align-items:center;gap:8px}
+/* PLAY is the biggest thing in the panel, and it says PAUSE while it is playing. */
+.vpanel .play{flex:1;height:30px;width:auto;margin:0;border-radius:5px;font-size:11px;font-weight:700;
+  letter-spacing:.14em;color:#fff;background:#1f6feb;border:1px solid #1f6feb;cursor:pointer;
+  font-family:'SF Mono',monospace}
+.vpanel .play:hover{background:#2b7ef5}
+.vpanel .play.playing{background:#3fb950;border-color:#3fb950;box-shadow:0 0 0 1px rgba(63,185,80,.35)}
+.vpanel .lstat{font:600 10px/1 'SF Mono',monospace;color:#c9d1d9;min-width:30px;text-align:right}
+.vslide{display:flex;align-items:center;gap:6px}
+.vslide label{font:600 9.5px/1 'SF Mono',monospace;letter-spacing:.14em;color:#9aa4b1;width:40px;flex:none}
+.vslide input[type=range]{flex:1;height:14px;margin:0;accent-color:#1f6feb;background:transparent;cursor:pointer;min-width:0}
+.vslide .vout{font:600 9.5px/1 'SF Mono',monospace;color:#e6edf3;width:46px;text-align:right;flex:none}
+.vslide.vol input[type=range]{accent-color:#3fb950}
+.vslide.zoom input[type=range]{accent-color:#e3b341}
+.vpanel .lscope{display:block;width:100%;height:64px;border:1px solid #30363d;border-radius:4px;
+  background:radial-gradient(ellipse at 50% 50%,#0a1420 0%,#04070d 100%)}
+.xvis{border-color:#30363d !important}
+.vpanel .vtools{display:flex;gap:4px}
+.vpanel .vtools button{flex:1;width:auto;height:21px;font-size:9.5px;font-weight:600;letter-spacing:.5px;padding:0;
+  color:#c9d1d9;border:1px solid rgba(88,166,255,.15);border-radius:3px;background:rgba(5,8,16,.9);
+  cursor:pointer;font-family:'SF Mono',monospace}
+.vpanel .vtools button[aria-selected="true"]{color:#3fb950;border-color:#3fb950;background:rgba(63,185,80,.12)}
+/* accordions — the voice cast, and the things you touch once */
+.vacc{border:1px solid #21262d;border-radius:5px;background:rgba(13,17,23,.7)}
+.vacc>summary{cursor:pointer;list-style:none;padding:6px 8px;font:600 10px/1.3 'SF Mono',monospace;
+  letter-spacing:.14em;color:#c9d1d9;display:flex;justify-content:space-between;align-items:center}
+.vacc>summary::-webkit-details-marker{display:none}
+.vacc>summary:hover{color:#e6edf3}
+.vacc>summary b{color:#58a6ff;font-weight:700;letter-spacing:.08em}
+.vacc[open]>summary{border-bottom:1px solid #21262d}
+.vacc .vaccb{padding:7px 8px;display:flex;flex-direction:column;gap:5px}
+.vpanel .voice{display:grid;grid-template-columns:1fr 1fr;gap:3px}
+.vpanel .voice button{width:auto;height:23px;font-size:9.5px;font-weight:600;letter-spacing:.3px;padding:0;color:#c9d1d9;
+  border:1px solid rgba(88,166,255,.15);border-radius:3px;background:rgba(5,8,16,.9);cursor:pointer;
+  font-family:'SF Mono',monospace}
+.vpanel .voice button[aria-checked="true"]{color:#fff;background:rgba(31,111,235,.55);border-color:#1f6feb}
+.vpanel .speed{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
+.vpanel .speed button{width:auto;height:21px;font-size:9.5px;font-weight:600;padding:0;color:#c9d1d9;
+  border:1px solid rgba(88,166,255,.15);border-radius:3px;background:rgba(5,8,16,.9);cursor:pointer;
+  font-family:'SF Mono',monospace}
+.vpanel .speed button[aria-checked="true"]{color:#fff;background:rgba(31,111,235,.55);border-color:#1f6feb}
+.vpanel .deckbtn{width:100%;font-size:10px;font-weight:600;letter-spacing:.14em;padding:5px 6px;border:1px solid #30363d;
+  border-radius:3px;background:#0d1117;color:#c9d1d9;cursor:pointer;font-family:'SF Mono',monospace}
+.vpanel .deckbtn.on{color:#e3b341;border-color:#e3b341}
+.vhint{font:9px/1.5 'SF Mono',monospace;color:#8b949e}
+/* ── the XMMS/Winamp 2.x face ────────────────────────────────────────────────
+   Borrowed on purpose, because that layout solved this exact problem in 1997
+   and has not been improved on for a small fixed-size audio player: a title
+   marquee, an LED clock, a tiny visualiser, one row of transport, a seek bar,
+   volume and balance, and two buttons that open the other two windows. The
+   document's PARTS are literally a playlist, so PL is not a metaphor here.
+   The skin is ours (this is not a Winamp skin, it is that anatomy) — the green
+   LED is the one thing worth copying verbatim. */
+.xtop{display:flex;gap:7px;align-items:stretch}
+.xvis{width:76px;height:44px;flex:none;border:1px solid #21262d;border-radius:3px;background:#050810;display:block}
+.xmeta{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:space-between;gap:2px}
+.xclock{font:700 21px/1 'SF Mono',ui-monospace,monospace;color:#56d364;letter-spacing:.06em;
+  text-shadow:0 0 7px rgba(63,185,80,.5)}
+.xclock small{font-size:10px;color:#3fb950;letter-spacing:.1em;margin-left:5px;text-shadow:none}
+.xmarq{overflow:hidden;white-space:nowrap;font:10px/1.3 'SF Mono',monospace;color:#c9d1d9}
+.xmarq span{display:inline-block;white-space:pre}
+.xkbps{display:flex;gap:8px;font:9px/1 'SF Mono',monospace;color:#8b949e;letter-spacing:.06em}
+.xkbps b{color:#56d364;font-weight:700}
+.xtrans{display:flex;gap:3px}
+.xtrans button{flex:1;height:22px;font-size:10px;padding:0;color:#8b949e;border:1px solid #21262d;
+  border-radius:3px;background:#0d1117;cursor:pointer;font-family:'SF Mono',monospace;line-height:1}
+.xtrans button:hover{color:#e6edf3;border-color:#484f58}
+.xtrans button.play{flex:1.6;color:#fff;background:#1f6feb;border-color:#1f6feb;font-weight:700;letter-spacing:.1em;font-size:10px}
+.xtrans button.play.playing{background:#3fb950;border-color:#3fb950}
+.xseek{width:100%;height:12px;margin:0;accent-color:#3fb950;background:transparent;cursor:pointer;display:block}
+.xwin{display:flex;gap:4px}
+.xwin button{flex:1;height:19px;font:600 8px/1 'SF Mono',monospace;letter-spacing:.16em;color:#8b949e;
+  border:1px solid #21262d;border-radius:3px;background:#0d1117;cursor:pointer}
+.xwin button[aria-expanded="true"]{color:#e3b341;border-color:#e3b341;background:rgba(227,179,65,.1)}
+.xpl{max-height:132px;overflow-y:auto;display:flex;flex-direction:column;gap:1px}
+.xpl button{display:flex;justify-content:space-between;gap:6px;width:100%;text-align:left;padding:5px 7px;
+  font:10px/1.3 'SF Mono',monospace;color:#c9d1d9;border:1px solid transparent;border-radius:3px;
+  background:none;cursor:pointer}
+.xpl button:hover{background:rgba(88,166,255,.07);color:#e6edf3}
+.xpl button[aria-current="true"]{color:#3fb950;border-color:rgba(63,185,80,.35);background:rgba(63,185,80,.08)}
+.xpl button i{font-style:normal;color:#8b949e}
+/* the spine: transport + timeline + download, one row, always visible */
+/* The spine must survive being narrowed: its buttons are fixed-width, so at a
+   small panel size the total overruns the box and clips the download control off
+   the right edge. It wraps to a second row instead of overflowing — still the
+   minimal player, just two lines of it. */
+.xbar{display:flex;align-items:center;gap:5px;min-width:0;flex-wrap:wrap;row-gap:4px}
+.xbar .xseek{flex:1 1 90px}
+.xbar button{height:25px;padding:0 7px;font-size:11px;font-weight:600;color:#c9d1d9;border:1px solid #21262d;
+  border-radius:3px;background:#0d1117;cursor:pointer;font-family:'SF Mono',monospace;line-height:1;flex:none}
+.xbar button:hover{color:#e6edf3;border-color:#484f58}
+.xbar button.play{min-width:52px;color:#fff;background:#1f6feb;border-color:#1f6feb;font-weight:700;letter-spacing:.08em}
+.xbar button.play.playing{background:#3fb950;border-color:#3fb950}
+.xbar .xtime{font:700 10.5px/1 'SF Mono',monospace;color:#56d364;flex:none;white-space:nowrap}
+.xbar a.dl{display:inline-flex;align-items:center;justify-content:center;height:25px;padding:0 8px;
+  font-size:13px;color:#c9d1d9;border:1px solid #21262d;border-radius:3px;background:#0d1117;
+  text-decoration:none;flex:none}
+.xbar a.dl:hover{color:#3fb950;border-color:#3fb950}
+.xbar a.dl[aria-disabled="true"]{opacity:.4;pointer-events:none}
+/* .lscope now lives inside .vpanel — see the player block above */
+.font-ctrl button.play:hover{background:#388bfd;border-color:#3fb950;box-shadow:0 0 6px rgba(63,185,80,.45)}
+
+@media (max-width:900px){
+  .vpanel{right:8px;left:8px;width:auto;max-height:70vh}
+}

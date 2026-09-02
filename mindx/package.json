@@ -1,0 +1,14 @@
+{
+  "name": "doc.player",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The mindX document player, standalone: XMMS-anatomy transport, timeline, volume + stereo balance, oscilloscope and spectrum with pitch-period zoom, speaker cast, and the dreamknob deck. Drives any backend that answers the two-shape /listen contract.",
+  "main": "src/doc-player.js",
+  "files": ["src", "rack", "examples", "README.md"],
+  "scripts": {
+    "serve": "python3 -m http.server 8899",
+    "build:rack": "cd rack && node build.mjs",
+    "check": "node --check src/doc-player.js"
+  },
+  "license": "Apache-2.0"
+}

@@ -1,0 +1,45 @@
+<!doctype html><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>doc.player — standalone</title>
+<link rel="stylesheet" href="../src/doc-player.css">
+<style>
+  body{margin:0;background:#0d1117;color:#c9d1d9;font:15px/1.7 system-ui,sans-serif}
+  .page{max-width:70ch;margin:0 auto;padding:40px 24px 60px}
+  h1{font-size:26px;margin:0 0 6px}
+  a{color:#58a6ff}
+  .note{color:#8b949e;font-size:13px;border-left:2px solid #21262d;padding-left:12px;margin:20px 0}
+</style>
+<div class="page">
+  <h1>doc.player <button id="listen-btn" class="lbtn" onclick="listenOpen()"
+      aria-expanded="false" aria-controls="listen-panel"
+      title="Open the voice panel and read this aloud"><span class="lbtn-i">&#9654;</span>LISTEN</button></h1>
+  <p>This page is not mindX. It is a bare HTML file that mounts <code>doc.player</code>
+     against a backend and gets the whole voaicey surface: transport, timeline,
+     volume and balance, oscilloscope and spectrum with zoom, the speaker cast,
+     and the dreamknob deck.</p>
+  <div class="note">Point <code>base</code> at anything that answers the two-shape
+     contract in <code>src/doc-player.js</code>. Against a live mindX it is
+     <code>/listen/&lt;name&gt;</code>; against a mock it is whatever you serve.</div>
+  <p>Press LISTEN. The panel opens on the right and starts playing in the same
+     gesture, because an open panel with a silent PLAY button asks you to press a
+     second button to do the thing you already asked for.</p>
+</div>
+
+<script src="../src/doc-player.js"></script>
+<script>
+  DocPlayer.mount({
+    base: (new URLSearchParams(location.search)).get('base') || '/listen/MANIFESTO',
+    doc:  (new URLSearchParams(location.search)).get('doc')  || 'MANIFESTO.md',
+    rack: '../rack/audio_rack.js',
+    defaultVoice: 'neural',
+    voices: [
+      {id:'neural',        label:'NEURAL',  engine:'auto',      voice:'',                                   rate:0},
+      {id:'classic',       label:'CLASSIC', engine:'espeak-ng', voice:'',                                   rate:0},
+      {id:'leaderofearth', label:'LEADER',  engine:'espeak-ng', voice:'en-earth+leaderofearth',             rate:118},
+      {id:'sagi',          label:'sAGI',    engine:'piper',     voice:'en_GB-northern_english_male-medium', rate:158},
+      {id:'jaimla',        label:'JAIMLA',  engine:'piper',     voice:'en_GB-jenny_dioco-medium',           rate:168},
+      {id:'sam',           label:'SAM',     engine:'espeak-ng', voice:'en-gb-scotland+sam',                 rate:170},
+      {id:'ancient',       label:'ANCIENT', engine:'espeak-ng', voice:'en-gb-x-rp+ancient',                 rate:150}
+    ]
+  });
+</script>
