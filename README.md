@@ -1,7 +1,16 @@
 # docsreader
 
+[![LISTEN](https://img.shields.io/badge/%E2%96%B6_LISTEN-hear_this_README-22d3ee?style=for-the-badge&labelColor=0b0f1a)](https://deltaverse.pythai.net/docsreader.html)
+
 Two readers that speak a document aloud and light the words as they go, and the
 one lesson that separates them.
+
+> **The button is a link, and that is not a compromise — it is the constraint.**
+> GitHub strips `<script>` from a README, so nothing here can *run*; a LISTEN
+> button that executed in this file is not a thing that exists. It runs at
+> [deltaverse.pythai.net/docsreader.html](https://deltaverse.pythai.net/docsreader.html),
+> which is this README rendered as a page and read by `deltaverse/` — docsreader
+> reading its own documentation, with the words lighting as it speaks.
 
 ```
 mindx/       the mindX reader — rendered audio, XMMS transport, scope + spectrum
