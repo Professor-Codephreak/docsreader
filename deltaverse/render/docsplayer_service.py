@@ -88,6 +88,11 @@ def _load_voices() -> dict:
     button to press twice.
     """
     reg = json.loads(_REGISTRY.read_text(encoding="utf-8"))
+    # THE TEMPLATES ARE THE ONES WRITTEN DOWN, not a list restated here. `templates` in the registry
+    # records what each saved voice actually RESOLVED to, with a fingerprint, so drift is detectable
+    # (see its own `_why`). A voice named there is a template; a voice not named there is not. There
+    # are two — neural and jaimla — and the browser lane's DVVoices.templates() must agree.
+    templates = [k for k in (reg.get("templates") or {}) if not k.startswith("_")]
     out: dict = {}
     for v in reg.get("voices", []):
         # A DISABLED VOICE IS CARRIED, NOT DROPPED. vCLONE renders nothing yet and
@@ -106,13 +111,23 @@ def _load_voices() -> dict:
                 "rate": v.get("rate") or 0,
                 "pitch": v.get("pitch") or 0,
                 "ss": v.get("sentenceSilence") or 0,
-                "note": (v.get("title") or "").strip()}
+                "note": (v.get("title") or "").strip(),
+                # WHO IS SPEAKING, not just how fast. A picker that shows only a name and a speed
+                # cannot tell a reader that JAIMLA is the female voice or that ANCIENT is RP, and
+                # every surface then re-invents that copy locally and gets it wrong. It is in the
+                # registry; it travels.
+                "gender": v.get("gender") or "",
+                "accent": v.get("accent") or "",
+                "tier": v.get("tier") or "",
+                "measured": v.get("measured") or "",
+                "template": v["id"] in templates,
+                "of": None, "face": 0}
         base["rtf"] = _RTF.get(base["engine"], 2.0)
         # `hidden` is reachable by id but not offered in the list: a recipe that
         # exists only as another voice's second face has no business in a picker.
         base["hidden"] = bool(v.get("hidden"))
         out[v["id"]] = base
-        for a in v.get("alternates") or []:
+        for fi, a in enumerate(v.get("alternates") or [], start=1):
             if "deltaverse" not in (a.get("surfaces") or ["deltaverse"]):
                 continue
             alt = dict(base)
@@ -120,7 +135,24 @@ def _load_voices() -> dict:
                         "engine": a.get("engine") or base["engine"],
                         "voice": a.get("voice") or "",
                         "rate": a.get("rate") or 0,
-                        "note": (a.get("title") or "").strip()})
+                        "note": (a.get("title") or "").strip(),
+                        "gender": a.get("gender") or "",
+                        "template": False,
+                        # AN ALTERNATE IS NOT A SIBLING, AND FLATTENING LOST THAT.
+                        #
+                        # Alternates were flattened into top-level ids with nothing left to say what
+                        # they were alternates OF, and on a surface with BUTTONS that was survivable:
+                        # you press CLASSIC again and get K.I.T.T. On a surface with a LIST it is
+                        # not. ZEN's second face is deliberately labelled "ZEN" as well
+                        # (see the registry's `_alternates`: announcing it would tell you what to
+                        # hear before you heard it) — which in a dropdown is two adjacent entries
+                        # reading ZEN, indistinguishable, and no "press again" to disambiguate them.
+                        #
+                        # The label stays exactly as the registry wrote it. What travels alongside it
+                        # is the RELATIONSHIP, so a list surface can nest the second face under its
+                        # parent and keep the intent instead of printing the same word twice.
+                        "of": v["id"],
+                        "face": fi})
             alt["rtf"] = _RTF.get(alt["engine"], 2.0)
             out[a["id"]] = alt
     return out
@@ -239,12 +271,44 @@ def render_via_docspeech(spec: dict, texts: list[str]):
 # ── routes ───────────────────────────────────────────────────────────────────
 @app.get("/docsplayer/voices")
 def voices():
+    """The cast, ordered so a picker does not have to invent an order of its own.
+
+    TEMPLATES FIRST, in the registry's own template order — neural, then jaimla — and then the rest
+    in registry order with each alternate immediately after the voice it is a face of. A picker that
+    sorts alphabetically puts ANCIENT before NEURAL and the reference stops looking like one; a
+    picker that keeps insertion order gets this for free.
+
+    `speeds` travels too. It was already in the registry (0.666 is a requested preset) and every
+    surface was hard-coding its own list, which is the same copy-of-a-definition mistake the voice
+    table was moved here to stop making.
+    """
+    table = voices_table()
+    try:
+        reg = json.loads(_REGISTRY.read_text(encoding="utf-8"))
+    except OSError:
+        reg = {}
+    templates = [k for k in (reg.get("templates") or {}) if not k.startswith("_")]
+
+    def rank(item):
+        k, v = item
+        # 0 = a template, in template order; 1 = everything else, in registry order
+        return (0, templates.index(k)) if k in templates else (1, 0)
+
+    rows = [(k, v) for k, v in table.items() if not v.get("hidden")]
+    rows.sort(key=rank)          # stable: non-templates keep the order _load_voices built
     return {"default": DEFAULT_VOICE,
+            "templates": templates,
+            "speeds": (reg.get("speeds") or {}),
             "voices": [{"id": k, "name": v["name"], "note": v["note"],
                         "engine": v.get("engine", "espeak-ng"),
+                        "model": v.get("voice") or "",
                         "disabled": bool(v.get("disabled")),
-                        "rtf": v.get("rtf")} for k, v in voices_table().items()
-                       if not v.get("hidden")]}
+                        "template": bool(v.get("template")),
+                        "of": v.get("of"), "face": v.get("face") or 0,
+                        "gender": v.get("gender") or "",
+                        "accent": v.get("accent") or "",
+                        "measured": v.get("measured") or "",
+                        "rtf": v.get("rtf")} for k, v in rows]}
 
 
 @app.get("/docsplayer/store")
@@ -367,7 +431,7 @@ def render(req: RenderReq, request: Request):
 @app.get("/docsplayer/health")
 def health():
     return {"ok": True, "store": store_status(), "voices": len(voices_table()),
-            "voices": len(voices_table())}
+            "templates": [k for k, v in voices_table().items() if v.get("template")]}
 
 
 if __name__ == "__main__":

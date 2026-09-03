@@ -51,7 +51,81 @@ blockquote{border-left:2px solid rgba(var(--vi),.5);padding-left:14px;margin:0 0
 .stored{font-family:var(--mono);font-size:10.5px;color:var(--quiet);margin:0 0 10px}
 .foot{margin-top:56px;padding-top:18px;border-top:1px solid rgba(255,255,255,.12);
   font-family:var(--mono);font-size:11px;color:var(--quiet);line-height:1.9}
+
+/* ── the substrate ────────────────────────────────────────────────────────
+   engine/ngn/voice-scope.js, fixed and full-bleed, BEHIND the document. It is the
+   voice actually playing, measured — so it belongs under the words it is reading
+   rather than in a box beside them. pointer-events:none so it never eats a click,
+   and the wrap sits on its own layer above it. */
+#scope{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;pointer-events:none;
+  opacity:0;transition:opacity 1.1s ease}
+#scope.on{opacity:1}
+.wrap{position:relative;z-index:1}
+
+/* ── the chooser ──────────────────────────────────────────────────────────
+   Not a <select>. A select cannot show which two voices are saved, cannot nest a
+   second face under the voice it is a face of, and cannot say what a render will
+   cost before you ask for it — and all three were things this page needed to say. */
+.vbar{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin:0 0 8px}
+button.vpick{font:inherit;font-size:12.5px;font-family:var(--mono);letter-spacing:.1em;padding:9px 14px;
+  border-radius:9px;background:#0b0f1a;color:#e6edf3;border:1px solid rgba(255,255,255,.18);cursor:pointer;
+  display:inline-flex;align-items:center;gap:9px}
+button.vpick:hover{border-color:rgba(var(--cy),.5)}
+button.vpick .who{color:rgb(var(--cy))}
+button.vpick .tm{color:rgb(var(--am));font-size:10px}
+button.vpick .car{color:var(--quiet);font-size:9px}
+.speed{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10.5px;
+  letter-spacing:.1em;color:var(--quiet)}
+.speed input{width:104px;accent-color:rgb(var(--cy))}
+.speed b{color:#e6edf3;font-weight:400;min-width:3.4em;display:inline-block}
+
+#cast{margin:0 0 14px;border:1px solid rgba(255,255,255,.13);border-radius:12px;overflow:hidden;
+  background:rgba(4,5,12,.82);backdrop-filter:blur(7px)}
+#cast[hidden]{display:none}
+#cast .grp{font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;
+  padding:11px 15px 4px;color:rgb(var(--am))}
+#cast .grp span{color:var(--quiet);letter-spacing:.06em;text-transform:none;font-size:10.5px}
+#cast label.v{display:flex;gap:12px;align-items:flex-start;padding:9px 15px;cursor:pointer;
+  border-top:1px solid rgba(255,255,255,.05)}
+#cast label.v:hover{background:rgba(var(--cy),.06)}
+#cast label.v.sel{background:rgba(var(--cy),.11);box-shadow:inset 3px 0 0 rgb(var(--cy))}
+#cast label.v.tmpl.sel{background:rgba(var(--am),.11);box-shadow:inset 3px 0 0 rgb(var(--am))}
+#cast label.v.off{opacity:.42;cursor:not-allowed}
+#cast label.v input{position:absolute;opacity:0;pointer-events:none}
+#cast .nm{font-family:var(--mono);font-size:12.5px;color:rgb(var(--cy));flex:0 0 118px;letter-spacing:.05em}
+#cast label.v.tmpl .nm{color:rgb(var(--am))}
+#cast .nm em{display:block;font-style:normal;font-size:9px;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--quiet);margin-top:3px}
+#cast .ds{flex:1;min-width:0;font-size:12.5px;color:var(--muted)}
+#cast .ds .mt{display:block;margin-top:4px;font-family:var(--mono);font-size:10px;color:var(--quiet)}
+#cast .face{flex:0 0 auto;font-family:var(--mono);font-size:10px;letter-spacing:.1em;padding:5px 9px;
+  border-radius:7px;background:rgba(255,255,255,.04);color:var(--quiet);
+  border:1px solid rgba(255,255,255,.14);cursor:pointer}
+#cast .face:hover{color:#fff;border-color:rgba(var(--cy),.5)}
+#cast .face.on{color:#04040a;background:rgb(var(--cy));border-color:rgb(var(--cy))}
+#cast .why{padding:10px 15px 13px;font-size:11.5px;color:var(--quiet);border-top:1px solid rgba(255,255,255,.07)}
+
+/* ── the readout ──────────────────────────────────────────────────────── */
+/* A ROW OF FACTS, NOT A GRID OF THEM. An auto-fit grid gave every fact the same narrow
+   column, so "measured f0 98 Hz · centroid 2712 · ~5.2x realtime on prod" wrapped over three
+   lines beside two columns of white space. They are independent readings of different lengths;
+   they flow. */
+.meter{font-family:var(--mono);font-size:11px;color:var(--quiet);line-height:1.9;margin:0 0 12px;
+  display:flex;flex-wrap:wrap;gap:2px 22px}
+.meter>div{max-width:100%}
+.meter[hidden]{display:none}
+.meter i{font-style:normal;color:rgba(255,255,255,.42)}
+.meter b{color:#e6edf3;font-weight:400}
+.meter .warm{color:rgb(var(--am))}
+/* The lit block is wherever the reading is, and the reading starts ABOVE the README —
+   at this page's own h1 and prose. Scoped to #readme it silently did nothing for the
+   first third of every recording. */
+.wrap .lit{background:rgba(var(--cy),.10);box-shadow:-10px 0 0 rgba(var(--cy),.10),10px 0 0 rgba(var(--cy),.10);
+  border-radius:2px}
+@media (prefers-reduced-motion:reduce){#scope{transition:none}}
 </style>
+
+<canvas id="scope" aria-hidden="true" data-noread></canvas>
 
 <div class="wrap">
 <h1>docsreader</h1>
@@ -59,12 +133,18 @@ blockquote{border-left:2px solid rgba(var(--vi),.5);padding-left:14px;margin:0 0
 
 <div class="bar" data-noread>
   <button id="play" type="button">▶ READ THIS PAGE</button>
-  <label style="font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;color:var(--quiet)">VOICE
-    <select id="voice" aria-label="voice"></select></label>
+  <button id="vpick" class="vpick" type="button" aria-expanded="false" aria-controls="cast">
+    <span class="car">VOICE</span><span class="who">…</span><span class="tm"></span></button>
   <audio id="au" controls preload="none"></audio>
   <a id="dl" class="dl" hidden download>⇣ KEEP</a>
+  <label class="speed" title="playback speed — it changes how fast you hear the file, never what was rendered">
+    SPEED <input id="speed" type="range" min="0.5" max="2.5" step="0.001" value="1"><b id="speedv">1.00×</b></label>
 </div>
+
+<div id="cast" hidden data-noread></div>
+
 <p class="status" id="status" role="status" aria-live="polite"></p>
+<div class="meter" id="meter" hidden data-noread></div>
 <p class="stored" id="stored" data-noread></p>
 
 <h2>What this page is</h2>
@@ -81,6 +161,41 @@ synthesiser, no wait, no CPU on anyone's machine. Change a word of the README an
 changes with it, so the stale recording can never be served for text that no longer exists.</p>
 <p>That is the whole trick, and it is the reason a page can afford to read itself aloud at all.
 Speech is expensive exactly once.</p>
+
+<h2>Two voices are saved, and the rest say what they are</h2>
+<p>Press <b>VOICE</b> and the cast opens. Two entries sit at the top under <b>SAVED</b> —
+<b>NEURAL</b>, the reference and the default on every refresh, and <b>JAIMLA</b>, the realm's
+female voice. Neither is edited, and that is the point of them: everything else in the realm is
+measured against one or the other, so a voice you can tune is never a voice something else is
+defined by.</p>
+
+<p>Jaimla is saved <em>beside</em> neural rather than derived from it, and that is a correction.
+She used to be neural with a ratio applied — a shade slower, a shade lower — which does not make a
+woman. <b>Pitch is not gender.</b> Lowering a male voice drags its resonances down and produces a
+larger man. What carries a voice's gender is <em>which voice is chosen</em>: neural measures
+98&nbsp;Hz with a spectral centroid of 2712, Jaimla 182&nbsp;Hz at 2783 — the brightest voice in the
+cast. The old ratio version came out at about 87&nbsp;Hz, lower than the voice it was supposed to
+differ from.</p>
+
+<p>Every other entry states its engine, its accent and what it costs to render before you ask for it,
+because a voice that takes ninety seconds of someone's CPU should say so rather than be discovered by
+watching a spinner. A voice with a <b>second face</b> shows one row and a toggle rather than two rows
+with the same name on them.</p>
+
+<h2>The background is the voice</h2>
+<p>What moves behind this document is not decoration. It is
+<a href="/nGn/expressions/voice-scope.xml">voice-scope</a>, a DeltaVerse substrate reading the same
+audio you are hearing: the waveform across the middle, the frequency spectrum along the floor, and the
+<em>inflection</em> — the rate at which the pitch is changing, which is what you hear as delivery and
+what no level meter shows. Behind those it measures eight acoustic quantities to eighteen decimals and
+hashes them into a <b>voiceprint</b>, a uint256 over the same domain as the realm's own scientific
+values. Nothing is recorded and nothing is uploaded; a hash of a measurement is not a copy of a voice.</p>
+
+<p>It has three states and it will not fake one. <b>live</b> — there is audio on its input and every
+pixel is measured. <b>resting</b> — the file is attached and silent, so it draws a flat line with a
+breath on it, because silence looks like silence. <b>untapped</b> — nothing to read at all, which is
+what the browser's own synthesiser gives you: <code>speechSynthesis</code> exposes no audio graph, so
+there is no waveform to draw and this does not draw one. The contrast <em>is</em> the label.</p>
 
 <h2>Two ways it can speak, and it says which</h2>
 <p><b>file</b> — the stored recording. Instant, seekable, downloadable, and it works on a machine
@@ -103,25 +218,32 @@ recording of the first.</p>
 </div>
 </div>
 
-<script src="/engine/ngn/voices.js"></script>
-<script src="/engine/ngn/doc-audio.js"></script>
-<script src="/engine/ngn/doc-reader.js"></script>
-<script defer src="/engine/ngn/audio_rack.js"></script>
+<script src="/engine/ngn/voices.js?v=ccd3f30b"></script>
+<script src="/engine/ngn/doc-audio.js?v=ccd3f30b"></script>
+<script src="/engine/ngn/doc-reader.js?v=ccd3f30b"></script>
+<script src="/engine/ngn/oscilloscope.js?v=ccd3f30b"></script>
+<script src="/engine/ngn/voice-scope.js?v=ccd3f30b"></script>
+<script defer src="/engine/ngn/audio_rack.js?v=ccd3f30b"></script>
 <script>
 (function () {
   'use strict';
   var SRC = '/docsreader-src/README.md';
   var KEY = 'dv_docsreader_render_v1';
   var PLAY = document.getElementById('play'), AU = document.getElementById('au');
-  var DL = document.getElementById('dl'), VOICE = document.getElementById('voice');
+  var DL = document.getElementById('dl');
+  var VPICK = document.getElementById('vpick'), CAST = document.getElementById('cast');
+  var SPEED = document.getElementById('speed'), SPEEDV = document.getElementById('speedv');
   var ST = document.getElementById('status'), STORED = document.getElementById('stored');
-  var BODY = document.getElementById('readme');
-  var blocks = [], manifest = null, reader = null;
+  var METER = document.getElementById('meter'), BODY = document.getElementById('readme');
+  var SCOPE = document.getElementById('scope');
+  var blocks = [], manifest = null, reader = null, field = null;
+  var cast = [], voiceId = 'neural', speeds = null;
   var q = new URLSearchParams(location.search);
 
   function say(m, bad) { ST.innerHTML = m || ''; ST.classList.toggle('bad', !!bad); }
   function kb(n) { return n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.round(n / 1024) + ' KB'; }
   function mmss(s) { s = Math.round(s || 0); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+  function esc(t) { var d = document.createElement('i'); d.textContent = t == null ? '' : t; return d.innerHTML; }
 
   // ── the README, rendered ────────────────────────────────────────────
   // A very small markdown subset, on purpose. This reads ONE document whose
@@ -196,7 +318,49 @@ recording of the first.</p>
   // ── what the reader collected, as the render service wants it ───────
   function collect() {
     if (!window.DVDocReader || !DVDocReader.collect) return [];
-    return DVDocReader.collect(document.body).map(function (b) { return { text: b.text }; });
+    return DVDocReader.collect(document.body);
+  }
+  function texts() { return blocks.map(function (b) { return { text: b.text }; }); }
+  function words() {
+    var n = 0;
+    for (var i = 0; i < blocks.length; i++) n += blocks[i].text.split(/\s+/).length;
+    return n;
+  }
+
+  // ── the substrate ──────────────────────────────────────────────────
+  // engine/ngn/voice-scope.js, behind the document, reading the audio this page is
+  // playing. The graph is built on the FIRST PLAY and not before: an AudioContext
+  // constructed without a gesture is created suspended, and a suspended context
+  // yields an analyser that reads zeroes forever — which the field would faithfully
+  // draw as silence, and it would be right, and the page would look broken.
+  var actx = null, tap = null;
+  function ensureGraph() {
+    if (actx) return true;
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC || !window.DVVoiceScope) return false;
+    try {
+      actx = new AC();
+      // createMediaElementSource may be called ONCE per element, ever. Held, because
+      // a second call throws and would take the audio down with it.
+      tap = actx.createMediaElementSource(AU);
+      var an = actx.createAnalyser();
+      an.fftSize = 2048; an.smoothingTimeConstant = 0.75;
+      tap.connect(an); an.connect(actx.destination);
+      if (field) field.attach(an);
+    } catch (e) { actx = null; return false; }
+    return true;
+  }
+  function startScope() {
+    if (field || !window.DVVoiceScope || !SCOPE) return;
+    field = new DVVoiceScope.Field(SCOPE, { background: true, printHz: 2 }).start();
+    SCOPE.classList.add('on');
+    // The voiceprint is a number derived from what is being said, and the page shows it
+    // rather than keeping it: a measurement nobody can see is indistinguishable from a
+    // measurement nobody took.
+    field.on('print', function (vp) {
+      var el = document.getElementById('m-print');
+      if (el) el.innerHTML = '<b>' + esc(vp.short) + '</b> <i>' + field.state() + '</i>';
+    });
   }
 
   // ── the stored recording ───────────────────────────────────────────
@@ -214,24 +378,226 @@ recording of the first.</p>
   function remember(voice, m) {
     try {
       var all = JSON.parse(localStorage.getItem(KEY) || '{}');
-      all[voice] = { key: m.key, url: m.parts[0].url, seconds: m.seconds, bytes: m.bytes,
-                     voiceName: m.voiceName, at: Date.now() };
+      // THE MARKS ARE KEPT. They were being dropped on the floor, and with them the
+      // only thing that knows which block you are hearing — so a stored recording
+      // played back with no highlight at all while a freshly rendered one had the
+      // information sitting in the response. It is a few hundred bytes.
+      all[voice] = { key: m.key, url: (m.parts && m.parts[0].url) || m.url, seconds: m.seconds,
+                     bytes: m.bytes, voiceName: m.voiceName, engine: m.engine, engineNote: m.engineNote,
+                     blocks: m.blocks, words: m.words, sampleRate: m.sampleRate,
+                     marks: (m.parts && m.parts[0].marks) || m.marks || null, at: Date.now() };
       localStorage.setItem(KEY, JSON.stringify(all));
     } catch (e) {}
   }
   function showStored(m) {
     if (!m) { STORED.textContent = ''; return; }
-    STORED.innerHTML = 'stored recording · <b>' + (m.voiceName || '') + '</b> · ' +
+    STORED.innerHTML = 'stored recording · <b>' + esc(m.voiceName || '') + '</b> · ' +
       mmss(m.seconds) + ' · ' + kb(m.bytes) + ' · plays from the file, no synthesis';
   }
 
+  // ── the readout ────────────────────────────────────────────────────
+  // Everything here is a number the service already returned or the page already
+  // knows. None of it is an estimate presented as a measurement, and the one figure
+  // that IS an estimate says so in the word it is labelled with.
+  function row(k, v) { return '<div><i>' + k + '</i> ' + v + '</div>'; }
+  function meter(m) {
+    var v = voice(voiceId), out = '';
+    if (m) {
+      out += row('engine', '<b>' + esc(m.engine || (v && v.engine) || '?') + '</b>');
+      out += row('duration', '<b>' + mmss(m.seconds) + '</b>');
+      out += row('size', '<b>' + kb(m.bytes) + '</b>' + (m.sampleRate ? ' · ' + (m.sampleRate / 1000) + ' kHz' : ''));
+      if (m.blocks) out += row('rendered', '<b>' + m.blocks + '</b> blocks · ' + (m.words || words()) + ' words');
+      if (m.realtimeFactor) out += row('render speed', '<b>' + m.realtimeFactor + '×</b> realtime' +
+        (m.renderSeconds ? ' · took ' + m.renderSeconds + 's' : ''));
+      out += row('voiceprint', '<span id="m-print"><b>—</b> <i>' + (field ? field.state() : 'untapped') + '</i></span>');
+    } else if (v) {
+      var w = words(), secs = w / 2.75;              // ~165 wpm, the rate this cast reads at
+      out += row('engine', '<b>' + esc(v.engine) + '</b>' + (v.model ? ' · ' + esc(v.model) : ''));
+      if (v.accent || v.gender) out += row('voice', '<b>' + esc([v.accent, v.gender].filter(Boolean).join(' · ')) + '</b>');
+      out += row('to read', '<b>' + w + '</b> words · about ' + mmss(secs) + ' of audio');
+      if (v.rtf) {
+        var est = secs / v.rtf;
+        out += row('first render', '<b class="' + (est > 45 ? 'warm' : '') + '">≈ ' + mmss(est) + '</b> on the host' +
+          ' <i>(' + v.rtf + '× realtime, declared)</i>');
+      }
+      if (v.measured) out += row('measured', esc(v.measured));
+    }
+    METER.innerHTML = out;
+    METER.hidden = !out;
+  }
+
+  // ── block highlighting, from the marks ─────────────────────────────
+  // The marks are where each block STARTS in the file, measured when the file was
+  // made — so the block that is lit is the block you are hearing, not an estimate
+  // scaled from a duration.
+  var lit = null;
+  function follow() {
+    var m = manifest && manifest.marks;
+    if (!m || !m.length || !blocks.length) return;
+    // MARKS BELONG TO THE TEXT THEY WERE MEASURED FROM. A mark says "block 17 starts at
+    // 141.2 s", and block 17 is only a block of THIS page while the block list is the one
+    // that was rendered. In production the two cannot disagree — the store's key is a hash
+    // of the exact blocks, so different text is a different recording — but a remembered
+    // address survives an edit to the page around it, and then the highlight walks confidently
+    // down the wrong paragraphs. Better to light nothing than to light the wrong thing.
+    if (m.length !== blocks.length) return;
+    var t = AU.currentTime, at = 0;
+    for (var i = 0; i < m.length; i++) { if (m[i].at <= t) at = m[i].block; else break; }
+    var node = blocks[at] && blocks[at].node;
+    if (node === lit) return;
+    if (lit) lit.classList.remove('lit');
+    lit = node || null;
+    if (lit) lit.classList.add('lit');
+  }
+  AU.addEventListener('timeupdate', follow);
+  AU.addEventListener('ended', function () { if (lit) { lit.classList.remove('lit'); lit = null; } });
+
+  // ── the cast ───────────────────────────────────────────────────────
+  function voice(id) {
+    for (var i = 0; i < cast.length; i++) if (cast[i].id === id) return cast[i];
+    return null;
+  }
+  // A SECOND FACE IS NOT A SIBLING, AND THE REGISTRY ALREADY SAYS WHICH IS WHICH.
+  //
+  // Alternates arrive flattened, each carrying `of` — the voice it is a face of.
+  // Some of them RENAME the button (CLASSIC → H.A.L → K.I.T.T → T1000) because they
+  // are different characters and you should be able to see which one you picked;
+  // one of them deliberately does NOT (ZEN's second face is labelled ZEN, because
+  // announcing it would tell you what to hear before you heard it).
+  //
+  // That distinction is in the data, so it is read from the data rather than
+  // restated here as a list of ids that would be wrong the first time a voice was
+  // added: an alternate whose NAME DIFFERS from its parent's gets its own row; an
+  // alternate whose name is IDENTICAL becomes a toggle on the parent's row. Two
+  // adjacent dropdown entries both reading ZEN — which is what this page shipped
+  // with — is the only outcome neither rule allows.
+  function faceOf(v) {
+    if (!v.of) return null;
+    var p = voice(v.of);
+    return (p && p.name === v.name) ? p : null;
+  }
+
+  function buildCast() {
+    var groups = [
+      { key: 'saved', title: 'SAVED', why: 'not edited — everything else in the realm is measured against one of these two' },
+      { key: 'cast',  title: 'THE CAST', why: '' },
+      { key: 'later', title: 'NOT YET', why: '' }
+    ];
+    var rows = { saved: [], cast: [], later: [] };
+    cast.forEach(function (v) {
+      if (faceOf(v)) return;                                  // drawn as a toggle on its parent
+      rows[v.disabled ? 'later' : v.template ? 'saved' : 'cast'].push(v);
+    });
+
+    var html = '';
+    groups.forEach(function (g) {
+      if (!rows[g.key].length) return;
+      html += '<div class="grp">' + g.title + (g.why ? ' <span>· ' + g.why + '</span>' : '') + '</div>';
+      rows[g.key].forEach(function (v) {
+        var faces = cast.filter(function (x) { return faceOf(x) === v; });
+        var on = v.id === voiceId || faces.some(function (f) { return f.id === voiceId; });
+        var cls = 'v' + (v.template ? ' tmpl' : '') + (v.disabled ? ' off' : '') + (on ? ' sel' : '');
+        var tag = v.template ? '◉ saved' : v.disabled ? 'not yet' : v.engine;
+        var mt = [];
+        if (v.model) mt.push(v.model);
+        if (v.accent) mt.push(v.accent);
+        if (v.gender) mt.push(v.gender);
+        if (v.rtf && !v.disabled) mt.push(v.rtf + '× realtime');
+        html += '<label class="' + cls + '" data-id="' + esc(v.id) + '">' +
+          '<input type="radio" name="dvvoice" value="' + esc(v.id) + '"' +
+            (v.id === voiceId ? ' checked' : '') + (v.disabled ? ' disabled' : '') + '>' +
+          '<span class="nm">' + esc(v.name) + '<em>' + esc(tag) + '</em></span>' +
+          '<span class="ds">' + esc(v.note || '') +
+            (mt.length ? '<span class="mt">' + esc(mt.join(' · ')) + '</span>' : '') + '</span>' +
+          faces.map(function (f) {
+            return '<button type="button" class="face' + (f.id === voiceId ? ' on' : '') +
+              '" data-face="' + esc(f.id) + '" title="the same voice in a different body — the only indicator is the sound">' +
+              '◑ second face</button>';
+          }).join('') +
+          '</label>';
+      });
+    });
+    html += '<div class="why">The two saved voices exist in <b>both</b> lanes — this page renders them to a ' +
+      'file on the host, and your own browser can speak them live through the LISTEN panel. The rest of the ' +
+      'cast is render-only: espeak-ng and piper voices that no browser has. Picking one here sets it in the ' +
+      'panel too wherever the two lanes have the same voice, so the page never has two answers to who is ' +
+      'speaking.</div>';
+    CAST.innerHTML = html;
+    paintPick();
+  }
+
+  function paintPick() {
+    var v = voice(voiceId);
+    VPICK.querySelector('.who').textContent = v ? v.name : voiceId;
+    VPICK.querySelector('.tm').textContent = v && v.template ? '◉' : '';
+    [].forEach.call(CAST.querySelectorAll('label.v'), function (l) {
+      var id = l.dataset.id;
+      var faces = cast.filter(function (x) { var p = faceOf(x); return p && p.id === id; });
+      l.classList.toggle('sel', id === voiceId || faces.some(function (f) { return f.id === voiceId; }));
+      [].forEach.call(l.querySelectorAll('.face'), function (b) {
+        b.classList.toggle('on', b.dataset.face === voiceId);
+      });
+    });
+  }
+
+  function choose(id) {
+    if (!id || id === voiceId) return;
+    var v = voice(id);
+    if (!v || v.disabled) return;
+    voiceId = id;
+    paintPick();
+    meter(null);
+    // ONE ANSWER TO WHO IS SPEAKING. The reader panel has its own cast — the browser's
+    // installed voices — and the two overlap exactly on the saved voices. Where they
+    // overlap they are kept in step; where they do not, the panel keeps what it had,
+    // because there is no browser voice called ANCIENT to switch it to.
+    try { if (reader && window.DVVoices && DVVoices.get(id).id === id) reader.voice(id); } catch (e) {}
+    if (lit) { lit.classList.remove('lit'); lit = null; }
+    AU.removeAttribute('src'); DL.hidden = true; manifest = null; paint();
+    render(id, false);
+  }
+
+  VPICK.addEventListener('click', function () {
+    var open = CAST.hidden;
+    CAST.hidden = !open;
+    VPICK.setAttribute('aria-expanded', String(open));
+  });
+  CAST.addEventListener('click', function (e) {
+    var f = e.target.closest && e.target.closest('.face');
+    if (f) { e.preventDefault(); choose(f.dataset.face); return; }
+    var l = e.target.closest && e.target.closest('label.v');
+    if (l && !l.classList.contains('off')) choose(l.dataset.id);
+  });
+
+  // ── speed ──────────────────────────────────────────────────────────
+  // playbackRate on the element: it changes how fast you hear the file and never what
+  // was rendered, so the stored recording stays the one recording whatever anyone does
+  // with this slider. The presets come from the registry with the rest of the cast —
+  // 0.666 among them — rather than being a second list invented here.
+  function snap(v) {
+    if (!speeds || !speeds.presets) return v;
+    for (var i = 0; i < speeds.presets.length; i++) {
+      if (Math.abs(speeds.presets[i] - v) < 0.035) return speeds.presets[i];
+    }
+    return v;
+  }
+  SPEED.addEventListener('input', function () {
+    var v = snap(+SPEED.value);
+    SPEED.value = v;
+    SPEEDV.textContent = v.toFixed(3).replace(/0+$/, '').replace(/\.$/, '') + '×';
+    try { AU.playbackRate = v; } catch (e) {}
+  });
+
+  // ── the transport ──────────────────────────────────────────────────
   function attach(m, autoplay) {
     manifest = m;
-    AU.src = m.url || m.parts[0].url;
+    AU.src = m.url || (m.parts && m.parts[0].url);
     DL.href = AU.src;
     DL.download = 'docsreader — ' + (m.voiceName || 'reading') + '.opus';
     DL.hidden = false;
+    try { AU.playbackRate = +SPEED.value || 1; } catch (e) {}
     showStored(m);
+    meter(m);
     paint();
     if (autoplay) start();
   }
@@ -246,6 +612,10 @@ recording of the first.</p>
   AU.addEventListener('ended', function () { paint(); });
 
   function start() {
+    // The graph has to exist BEFORE the element starts, or the first seconds play
+    // untapped and the substrate draws silence over a voice that is already talking.
+    ensureGraph();
+    if (actx && actx.state === 'suspended') { try { actx.resume(); } catch (e) {} }
     // A REFUSAL IS NOT A HANG. The browser will not begin audio without a
     // gesture, and it says so through the promise rather than an error event.
     // Caught, said, and turned into a button that does have a fresh gesture on
@@ -261,23 +631,29 @@ recording of the first.</p>
     }
   }
 
-  function render(voice, autoplay) {
-    var mem = remembered(voice);
+  function render(voiceKey, autoplay) {
+    var mem = remembered(voiceKey);
     if (mem) { say('stored recording found — playing the file'); attach(mem, autoplay); return; }
     if (!blocks.length) blocks = collect();
     if (!blocks.length) { say('nothing to read', true); return; }
+    var v = voice(voiceKey);
+    if (v && v.disabled) { say(esc(v.name) + ' is not available yet', true); return; }
     PLAY.disabled = true;
-    say('rendering ' + blocks.length + ' blocks once — every play after this is the file');
+    var est = v && v.rtf ? ' — about ' + mmss((words() / 2.75) / v.rtf) + ' at ' + v.rtf + '× realtime' : '';
+    say('rendering ' + blocks.length + ' blocks once' + est + '; every play after this is the file');
     fetch('/docsplayer/render', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: location.href, title: 'docsreader', voice: voice, blocks: blocks })
+      body: JSON.stringify({ url: location.href, title: 'docsreader', voice: voiceKey, blocks: texts() })
     }).then(function (r) {
       return r.json().then(function (j) { if (!r.ok) throw new Error(j.detail || ('HTTP ' + r.status)); return j; });
     }).then(function (m) {
-      remember(voice, m);
+      remember(voiceKey, m);
       say((m.cached ? 'already rendered — ' : 'rendered in ' + m.renderSeconds + 's — ') +
           'kept as a file, ' + mmss(m.seconds) + ' · ' + kb(m.bytes));
-      attach({ url: m.parts[0].url, seconds: m.seconds, bytes: m.bytes, voiceName: m.voiceName, key: m.key }, autoplay);
+      attach({ url: m.parts[0].url, marks: m.parts[0].marks, seconds: m.seconds, bytes: m.bytes,
+               voiceName: m.voiceName, key: m.key, engine: m.engine, engineNote: m.engineNote,
+               blocks: m.blocks, words: m.words, sampleRate: m.sampleRate,
+               realtimeFactor: m.realtimeFactor, renderSeconds: m.renderSeconds }, autoplay);
     }).catch(function (e) {
       say(String((e && e.message) || e), true);
     }).then(function () { PLAY.disabled = false; });
@@ -286,41 +662,87 @@ recording of the first.</p>
   PLAY.addEventListener('click', function () {
     if (!AU.paused && AU.src) { AU.pause(); try { AU.currentTime = 0; } catch (e) {} paint(); return; }
     if (AU.src) { start(); return; }
-    render(VOICE.value || 'neural', true);
-  });
-  VOICE.addEventListener('change', function () {
-    AU.removeAttribute('src'); DL.hidden = true; manifest = null; paint();
-    render(VOICE.value, !AU.paused);
+    render(voiceId, true);
   });
 
-  // ── ingest, then offer to read ─────────────────────────────────────
-  fetch(SRC, { cache: 'no-cache' })
+  // ── two fetches, one start ─────────────────────────────────────────
+  // THE FIRST RENDER USED TO RACE ITS OWN VOICE LIST. The README ingest and the cast
+  // fetch were started together and whichever landed first went ahead: when the ingest
+  // won — which it usually did, being one small same-origin file against a service
+  // call — the page rendered with `VOICE.value` still empty, fell back to the string
+  // 'neural', and then the cast arrived and set the picker to the default, which
+  // LOOKED right and was a coincidence. The moment the default is anything but neural,
+  // or the service is slow enough that a stored recording is attached under the wrong
+  // key, the coincidence stops covering for it. Both are awaited; neither is racing.
+  var ingest = fetch(SRC, { cache: 'no-cache' })
     .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
-    .then(function (src) {
-      BODY.innerHTML = md(src);
-      if (window.DVVoices && window.DVDocReader) {
-        DVVoices.ready().then(function () {
-          // the panel rides along for word highlighting, the deck and the transport
-          reader = DVDocReader.mount({ root: document.querySelector('.wrap'), label: 'docsreader' });
-          blocks = collect();
-          say('ingested <b>' + blocks.length + '</b> blocks from the README');
-          var mem = remembered(VOICE.value || 'neural');
-          if (mem) { attach(mem, q.get('autoplay') !== '0'); }
-          else if (q.get('autoplay') !== '0') { render(VOICE.value || 'neural', true); }
-        });
-      }
-    })
-    .catch(function (e) { say('could not read the README copy: ' + e.message, true); });
+    .then(function (src) { BODY.innerHTML = md(src); });
 
-  fetch('/docsplayer/voices').then(function (r) { return r.json(); }).then(function (d) {
-    d.voices.forEach(function (v) {
-      var o = document.createElement('option');
-      o.value = v.id; o.disabled = !!v.disabled;
-      o.textContent = v.name + (v.disabled ? '  (not yet)' : '');
-      o.title = v.note || '';
-      VOICE.appendChild(o);
-    });
-    VOICE.value = d.default || 'neural';
-  }).catch(function () { VOICE.disabled = true; });
+  var voices = fetch('/docsplayer/voices').then(function (r) { return r.json(); }).then(function (d) {
+    cast = d.voices || [];
+    speeds = d.speeds || null;
+    voiceId = d.default || 'neural';
+    if (speeds) {
+      if (speeds.min != null) SPEED.min = speeds.min;
+      if (speeds.max != null) SPEED.max = speeds.max;
+      if (speeds.step != null) SPEED.step = speeds.step;
+      if (speeds.default != null) { SPEED.value = speeds.default; SPEEDV.textContent = (+speeds.default).toFixed(2) + '×'; }
+      SPEED.title = 'playback speed · presets ' + (speeds.presets || []).join(' · ') + ' snap';
+    }
+    buildCast();
+  }).catch(function () {
+    // The cast is a service call and the page must survive it being down. neural is the
+    // default everywhere in the realm, so it is what remains when nothing answers — and
+    // it is stated rather than silently assumed.
+    cast = [{ id: 'neural', name: 'NEURAL', template: true, engine: 'auto', rtf: 2.0,
+              note: 'the reference — the cast list could not be reached, so only the default is offered' }];
+    voiceId = 'neural';
+    buildCast();
+  });
+
+  // THE FILE LANE DOES NOT WAIT ON THE BROWSER'S VOICE LIST, AND USED TO.
+  //
+  // Everything here was gated behind DVVoices.ready(), which is a wait for the platform to enumerate
+  // its INSTALLED SYNTHESIS VOICES — a thing this page does not need and spends most of its prose
+  // explaining that it does not need. A stored Opus file plays on a machine with no voices at all;
+  // that is the argument for rendering ahead in the first place. On such a machine ready() waits out
+  // its full deadline finding nothing, and the page sat silent and statusless the whole time — 20
+  // seconds of it in a background tab, before the deadline was fixed to be wall-clock.
+  //
+  // So: read as soon as there is something to read, and let the LIVE lane arrive when it arrives.
+  Promise.all([ingest, voices]).then(function () {
+    startScope();
+    go();
+  }).catch(function (e) {
+    say('could not read the README copy: ' + ((e && e.message) || e), true);
+  });
+
+  // the panel rides along for word highlighting on LIVE synthesis, and for the deck. An enhancement,
+  // mounted when its lane is ready, and never a precondition for the file.
+  if (window.DVVoices && window.DVDocReader) {
+    Promise.all([ingest, DVVoices.ready()]).then(function () {
+      reader = DVDocReader.mount({ root: document.querySelector('.wrap'), label: 'docsreader' });
+      // whatever was chosen while it was arriving still applies to it
+      try { if (reader && DVVoices.get(voiceId).id === voiceId) reader.voice(voiceId); } catch (e) {}
+    }).catch(function () {});
+  }
+
+  function go() {
+    blocks = collect();
+    say('ingested <b>' + blocks.length + '</b> blocks from the README');
+    meter(null);
+    var mem = remembered(voiceId);
+    if (mem) attach(mem, q.get('autoplay') !== '0');
+    else if (q.get('autoplay') !== '0') render(voiceId, true);
+  }
+
+  // the store's own budget, said plainly — this page is one tenant of a 300 MB LRU
+  fetch('/docsplayer/store').then(function (r) { return r.json(); }).then(function (d) {
+    var f = document.querySelector('.foot');
+    if (f && d && d.budgetBytes) {
+      f.insertAdjacentHTML('beforeend', '<br>store · ' + kb(d.usedBytes) + ' of ' +
+        kb(d.budgetBytes) + ' used · ' + d.renders + ' renders kept, least-recently-played pruned first');
+    }
+  }).catch(function () {});
 })();
 </script>

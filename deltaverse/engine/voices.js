@@ -112,6 +112,19 @@
 
   var SAVED = { neural: NEURAL, jaimla: JAIMLA };
 
+  // THE SAVED SET IS AN INVARIANT ACROSS TWO LANES, SO IT IS NAMED RATHER THAN COUNTED.
+  //
+  // This file is the BROWSER lane: a saved voice is a selection rule over whatever the platform has
+  // installed. mindX's data/config/docspeech_voices.json is the RENDER lane: the same voice is a
+  // named model (neural → piper en_GB-alan-medium, jaimla → piper en_GB-jenny_dioco-medium), and its
+  // `templates` object records what each one actually resolved to, with a fingerprint, so drift is
+  // detectable. The two lanes are only coherent while they hold the SAME saved set — otherwise a
+  // page offers a voice in one lane that does not exist in the other and the picker has to invent
+  // copy to explain the gap.
+  //
+  //   DVVoices.templates()  ⟷  Object.keys(registry.templates)   — must be the same two ids.
+  var SAVED_ORDER = ['neural', 'jaimla'];
+
   // ── the derivations, each stating its delta from the reference ─────────
   var DERIVED = {
     overlord: {
@@ -244,8 +257,11 @@
   // neural first, because it is the default; then the other saved voice; then
   // the derivations, which are the only editable things here.
   function list() {
-    return Object.keys(SAVED).concat(Object.keys(DERIVED)).map(get);
+    return SAVED_ORDER.concat(Object.keys(DERIVED)).map(get);
   }
+  // the saved voices, in their own order — neural first, because it is the default
+  function templates() { return SAVED_ORDER.map(get); }
+  function isTemplate(id) { return !!SAVED[id]; }
 
   // ── editing: derivations only ──────────────────────────────────────────
   function edit(id, patch) {
@@ -307,12 +323,13 @@
   function usable() { return !!synth && platform.length > 0; }
 
   var DV = {
-    NEURAL: NEURAL, ready: ready, get: get, list: list, usable: usable,
+    NEURAL: NEURAL, JAIMLA: JAIMLA, TEMPLATES: SAVED_ORDER.slice(),
+    ready: ready, get: get, list: list, templates: templates, isTemplate: isTemplate, usable: usable,
     edit: edit, reset: reset, derive: derive,
     utter: utter, speak: speak, cancel: cancel,
     platform: function () { return platform.slice(); },
     supported: !!synth,
-    version: '1.0.0'
+    version: '1.1.0'
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = DV;
   global.DVVoices = DV;
