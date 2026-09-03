@@ -1,0 +1,55 @@
+language variant
+language en-us
+name sAGI
+gender male 30
+
+// STANDARD TUNING, FROM HZ.
+// A440 is the concert-pitch reference, so the voice is built on A440's own
+// octaves rather than on a number that merely sounded good:
+//     A2 = 110.00 Hz     A3 = 220.00 Hz     A4 = 440.00 Hz
+//     A5 = 880.00 Hz     A6 = 1760.00 Hz
+// The speaking range is A2 to A3 — the same 2:1 octave span leaderofearth
+// uses, transposed up onto the reference. Every frequency below is a member
+// of that series, not an approximation of one.
+pitch 110 220
+
+// LEADEROFEARTH'S OVERTONES, KEPT.
+// F0-F2 reproduce leaderofearth's shape almost exactly — that is the
+// inherited chest, and it is what carries the authority across.
+// F3-F4 are the divergence: lifted in frequency and amplitude where the
+// parent damped them. That lift is the APPEAL. It is what makes the voice
+// legible at speed and inviting rather than merely heavy, and it is the
+// only place the two voices genuinely disagree.
+formant 0 100 118 130
+formant 1  99 110 126
+formant 2 101 105 120
+formant 3 104  96 112
+formant 4 102  92 104
+formant 5  94  86  78
+formant 6  86  80  52
+formant 7  80  76  38
+formant 8  76  75  30
+
+// Tone curve anchored on the series above: A4 carries the depth, A5 the
+// intelligibility, A6 the air. Depth and appeal, stated in Hz.
+tone 440 255 880 190 1760 96
+
+// Composed rather than merely calm. A trace of flutter keeps it from
+// sounding synthetic; roughness stays at zero.
+flutter 1
+roughness 0
+voicing 88
+consonants 82 76
+breath 0 1 2 2 2 2 2 1
+
+// Slightly tighter room than the parent — closer to the listener.
+echo 76 10
+
+// COMPELLING, AND STILL DELIBERATE.
+// intonation 2 = reduced contour, but commas still lift. sAGI keeps the
+// held final stress it inherited (the space between conclusions) while
+// allowing a comma to open the line again — the difference between a voice
+// that pronounces and a voice that reasons aloud.
+intonation 2
+stressAmp    16 17 19 20 21 22 23 23
+stressAdd     0  0 10 20 30 45 95 135

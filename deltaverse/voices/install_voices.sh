@@ -121,12 +121,23 @@ if [ "$bn" -gt 0 ]; then
     n="$(echo $out | wc -w)"
     novowel=0
     for tok in $out; do echo "$tok" | grep -qE '[iIEaAuUV03O@eo]' || novowel=$((novowel+1)); done
+    # SCHWA COLLAPSE. A voice whose dictionary or phoneme table does not resolve
+    # does not error and does not fall silent — it returns EVERY word as `@@@_::`,
+    # schwas with the length marks still attached. That passes the word count
+    # (each blob is a token) and passes the nucleus check (@ IS a vowel), so both
+    # existing traps are blind to it. Caught in the wild: `phonemes en-gb-scotland`
+    # names a VOICE, not a table, and en-druid shipped saying nothing at all.
+    schwa=0
+    for tok in $out; do echo "$tok" | grep -qE '^[@_:'"'"']+$' && schwa=$((schwa+1)); done
     if [ "$out" == "$ref" ]; then
       echo "FAIL voice $v  phonemes IDENTICAL to table '$tbl' — no replace rule fired." >&2; fail=1
     elif [ "$n" != "$NW" ]; then
       echo "FAIL voice $v  word count $n != $NW — a replace target is not in the table." >&2; fail=1
     elif [ "$novowel" != "0" ]; then
       echo "FAIL voice $v  $novowel word(s) lost their vowel — a replace ATE a nucleus." >&2; fail=1
+    elif [ "$schwa" -gt 2 ]; then
+      echo "FAIL voice $v  $schwa word(s) are schwa-only — the phoneme table or dictionary" >&2
+      echo "     did not resolve. \`phonemes\` takes a TABLE (en, en-wi), not a voice name." >&2; fail=1
     else
       echo "OK   voice $v  differs from table '$tbl', $n/$NW words intact, all nuclei present"
     fi

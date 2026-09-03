@@ -1,0 +1,67 @@
+// en-druid — English with four hundred years of Gaelic under it.
+//
+// ANCIENT sat on en-gb-x-rp, which is Received Pronunciation: a broadcast accent
+// standardised in the 1920s. For a voice that is meant to predate it by four
+// centuries that is not merely wrong, it is backwards — RP is the youngest
+// English in the cast.
+//
+// The base is en-gb-scotland, which is the nearest thing espeak-ng has to a
+// Gaelic substrate: rhotic, with the vowel system Scots English kept and RP
+// lost. Only the features that survive in Highland and Hebridean English are
+// taken, and each is one several speakers share rather than one speaker's habit.
+
+name en-druid
+language en-druid 8
+language en 22
+
+// `phonemes` TAKES A TABLE, NOT A VOICE, AND THE DIFFERENCE IS SILENT.
+//
+// This said `phonemes en-gb-scotland`. That is a VOICE name — there is no
+// phoneme table called that — and espeak-ng does not complain: it resolves
+// nothing and every word in the probe comes back as `@@@_::`, schwas with the
+// length marks still attached. Not an error, not silence, a voice with no words
+// in it. Tested afterwards: en-sc, en-gb-sc, en-n, en-rp, en-wm and even en-wi
+// all fail the same way HERE, while en-wi works in en-earth — the difference is
+// the priority number on the first `language` line, which changes how the table
+// is resolved. `phonemes en` is the shape that works with a numbered first line,
+// and it is what en-zen and en-t800 already use.
+//
+// So the Gaelic is carried by the RULES below and by the timing above, not by a
+// borrowed table. That is the honest way round anyway: the substrate features
+// are what a listener hears, and a table would have brought a whole accent when
+// only three features survive four hundred years.
+phonemes en
+
+// SLOW, AND EVENLY SO.
+// Gaelic-substrate English is far less stress-timed than RP — the unstressed
+// syllables keep their length instead of collapsing. That evenness is most of
+// what reads as old: modern English hurries between its stresses, and this does
+// not. Long across the board, and a narrow spread between the levels.
+stressLength 210 210 215 215 240 240 258 272
+
+// Emphasis barely moves. Wisdom does not lean on words.
+stressAmp 14 14 15 15 16 17 18 19
+
+// A GAP BETWEEN WORDS. Wider than any other voice here except H.A.L's. The
+// spacing is what turns slow into DELIBERATE, and it is the difference between
+// someone old and someone tired.
+words 4
+
+dictrules 8
+
+// THE THREE FEATURES THAT SURVIVE.
+//
+// The tapped /r/ is the single most identifiable feature of Gaelic-influenced
+// English and the last to go in speakers who have otherwise lost the substrate.
+replace 00 r *
+
+// Gaelic has no /z/ — it is heard and produced as /s/, and this is the second
+// most durable feature of the substrate.
+replace 00 z s
+
+// The dental fricatives are not in the Gaelic inventory either; /th/ goes to a
+// dental stop rather than to /s/ (which is what a Germanic substrate does — see
+// en-t800). Kept voiced-for-voiced so no word changes: this is the whole test a
+// replace has to pass.
+replace 00 T t
+replace 00 D d

@@ -90,9 +90,17 @@ def _load_voices() -> dict:
     reg = json.loads(_REGISTRY.read_text(encoding="utf-8"))
     out: dict = {}
     for v in reg.get("voices", []):
-        if v.get("disabled"):
-            continue                                    # vCLONE renders nothing yet
+        # A DISABLED VOICE IS CARRIED, NOT DROPPED. vCLONE renders nothing yet and
+        # the picker still has to show it: a cast with a gap in it is more
+        # confusing than a locked door, and this surface refuses it the same way
+        # the reader does. Dropping it here made the two pickers disagree about
+        # what the realm has.
+        # this surface takes the unscoped voices and its own
+        if "deltaverse" not in (v.get("surfaces") or ["deltaverse"]):
+            continue
         base = {"name": v.get("faceLabel") or v.get("label") or v["id"],
+                "channels": v.get("channels") or 1,
+                "disabled": bool(v.get("disabled")),
                 "engine": v.get("engine") or "auto",
                 "voice": v.get("voice") or "",
                 "rate": v.get("rate") or 0,
@@ -100,8 +108,13 @@ def _load_voices() -> dict:
                 "ss": v.get("sentenceSilence") or 0,
                 "note": (v.get("title") or "").strip()}
         base["rtf"] = _RTF.get(base["engine"], 2.0)
+        # `hidden` is reachable by id but not offered in the list: a recipe that
+        # exists only as another voice's second face has no business in a picker.
+        base["hidden"] = bool(v.get("hidden"))
         out[v["id"]] = base
         for a in v.get("alternates") or []:
+            if "deltaverse" not in (a.get("surfaces") or ["deltaverse"]):
+                continue
             alt = dict(base)
             alt.update({"name": a.get("label") or a["id"],
                         "engine": a.get("engine") or base["engine"],
@@ -229,7 +242,9 @@ def voices():
     return {"default": DEFAULT_VOICE,
             "voices": [{"id": k, "name": v["name"], "note": v["note"],
                         "engine": v.get("engine", "espeak-ng"),
-                        "rtf": v.get("rtf")} for k, v in voices_table().items()]}
+                        "disabled": bool(v.get("disabled")),
+                        "rtf": v.get("rtf")} for k, v in voices_table().items()
+                       if not v.get("hidden")]}
 
 
 @app.get("/docsplayer/store")
@@ -257,6 +272,9 @@ def render(req: RenderReq, request: Request):
     spec = voices_table().get(req.voice)
     if not spec:
         raise HTTPException(400, "unknown voice %r" % req.voice[:32])
+    if spec.get("disabled"):
+        # shown, and refused where the decision is made rather than only in markup
+        raise HTTPException(409, "%s is not available yet" % spec.get("name", req.voice))
     # The reference is not adjusted, only derived from. If someone ever puts a
     # tuning parameter on neural's record, this refuses rather than quietly
     # rendering a reference that is no longer the reference.

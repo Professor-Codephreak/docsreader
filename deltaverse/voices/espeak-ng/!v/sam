@@ -1,0 +1,70 @@
+language variant
+language en-gb-scotland
+name sam
+gender male 33
+
+// A DISTINCT MOUTH FOR THE BETWEEN-VOICE.
+// The base was plain `en`, which is the same unmarked English `classic` already
+// speaks; two entries in a picker sharing an accent is two entries that sound
+// like one. en-gb-scotland is a real, separate phoneme set on this host, and it
+// is nobody else's here. The tuning below is untouched — the computed D3-G3
+// fourth and the harshness loaded onto stress 5-7 are what makes this Sam; the
+// accent only decides whose mouth says it.
+
+// BETWEEN, ARRIVED AT RATHER THAN ASSERTED.
+// The set already has a floor and a ceiling: leaderofearth speaks from E2
+// (82.41 Hz), jaimla reaches C4 (261.63 Hz). The geometric mean of those two
+// extremes is sqrt(82.41 x 261.63) = 146.8 Hz — which is D3 (146.83), and which
+// lands within 2% of 150, the f0 NeuralVoiceEngine.js assigns to its explicitly
+// gender-'neutral' profile (src/NeuralVoiceEngine.js:50-55). Sam's floor is
+// literally the midpoint of the voices around it. Neutrality here is a computed
+// position between this system's own poles, not a guess at an average human.
+//
+// The span is a perfect fourth, D3 to G3 (146.83 -> 196.00, a ratio of 4:3):
+// wider than nothing, narrower than jaimla's fifth or leaderofearth's octave.
+// The fourth is the interval that refuses to resolve as major or minor, which
+// is the correct joke to make with a gender-neutral voice.
+pitch 147 196
+
+// Formants sit between the two sets on purpose: leaderofearth damps F1-F3 and
+// jaimla lifts them, so Sam scales them ~108 — above the male set, below the
+// female one, in the region the ear declines to sex.
+formant 0 100 116 120
+formant 1 108 116 116
+formant 2 110 114 110
+formant 3 108 108  98
+formant 4 106 104  90
+formant 5 102  98  76
+formant 6  96  92  58
+formant 7  92  88  46
+formant 8  90  86  38
+
+// Balanced low and mid, with deliberate presence at 2.6 kHz — the band the ear
+// reads as edge and articulation. Kept moderate at rest; it is what the harsh
+// register has to bite with.
+tone 480 215 1200 205 2600 150
+
+// APPEALING AT REST.
+breath  1 2 3 3 3 3 3 2
+breathw 90 120 130 130 130 130 120 100
+voicing 72
+consonants 74 66
+flutter 1
+
+// HARSH WHEN ADAMANT — and an honest account of how.
+//
+// A variant file is STATIC. It cannot detect anger; nothing here inspects the
+// text. What it CAN choose is how emphasis manifests, and emphasis is exactly
+// what insistence produces: espeak drives stress levels 6-7 on emphatic and
+// adamant delivery, and leaves 0-3 for ordinary speech.
+//
+// So the harshness is loaded onto the TOP of the stress curve. Levels 0-4 are
+// low and nearly flat, which is the appealing, level register Sam speaks in
+// normally. Levels 5-7 climb steeply — 17, 26, 33 — and that jump is what turns
+// edged and critical, because `roughness 2` only becomes audible when driven
+// hard. The voice is not angry; it becomes harsh precisely when it insists,
+// which is the closest a static formant voice can honestly get.
+roughness 2
+intonation 1
+stressAmp   13 13 14 15 17 22 28 33
+stressAdd    0  5 15 25 40 65 105 145

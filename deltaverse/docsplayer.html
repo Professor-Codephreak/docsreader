@@ -307,7 +307,8 @@ and the other small reusable behaviours) follow <a href="https://github.com/mlod
     d.voices.forEach(function (v) {
       var o = document.createElement('option');
       o.value = v.id;
-      o.textContent = v.name + (v.rtf && v.rtf < 10 ? '  (slower)' : '');
+      o.disabled = !!v.disabled;
+      o.textContent = v.name + (v.disabled ? '  (not yet)' : (v.rtf && v.rtf < 10 ? '  (slower)' : ''));
       o.title = v.note + (v.rtf ? '  —  about ' + v.rtf + '\u00d7 realtime on this host' : '');
       VOICE.appendChild(o);
     });

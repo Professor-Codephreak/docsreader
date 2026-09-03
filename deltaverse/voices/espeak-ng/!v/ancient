@@ -1,9 +1,21 @@
 language variant
-language en-gb-x-rp
+language en-druid
 name ancient
 gender male 90
 
-// FOUR HUNDRED YEARS OLD, AND STILL AT SPEAKING VOLUME.
+// FOUR HUNDRED YEARS OLD, GAELIC UNDER IT, AND STILL AT SPEAKING VOLUME.
+//
+// The base moved from en-gb-x-rp to en-druid (en-gb-scotland + a tapped r + very
+// even, very long syllables). RP is a broadcast accent standardised in the
+// 1920s: for a voice meant to predate it by four centuries it was not merely
+// wrong, it was the YOUNGEST English in the cast.
+//
+// WHAT CAME ACROSS FROM LEADER. LEADER is shaped by a broadcast EQ — cut the
+// mud, lift the consonant band — and espeak's `tone` IS that EQ, so the same
+// three decisions are made here in the voice file rather than after it. The
+// elements are not decoration: a voice that is meant to sound like earth, air
+// and metal has to have energy where each of those lives, and nowhere else.
+//
 // The brief is a druid, not a ghost. Down a whole tone from 98 to 88 — age drops
 // the fundamental as the folds thin and stiffen — with a range of 8 rather than
 // zero, because a body that old is not perfectly steady and a perfectly steady
@@ -53,11 +65,26 @@ formant 6  96  86  50
 formant 7  94  84  42
 formant 8  92  82  36
 
-// Gravity restored under the rasp: a low anchor at 180 Hz that the old curve
-// (which started at 380 and starved it to 90) simply did not have. Air comes
-// down from 170 to 140 — the rasp is now carried by roughness against real
-// tone, instead of by hiss.
-tone 180 190 380 150 1300 195 2900 140
+// THE ELEMENTS, AS A CURVE. Five points, and each one is a decision:
+//
+//   90 Hz   at 245   EARTH — a shelf below the fundamental. Not a note, a floor.
+//                    Nothing else in the cast has energy here; it is felt rather
+//                    than heard, and it is what makes a quiet voice feel SOLID.
+//  200 Hz   at 230   the body of the voice, full.
+//  420 Hz   at 120   THE CUT, and the most important number here. This is
+//                    LEADER's lesson: 260-520 Hz is the mud that makes a low
+//                    voice heavy rather than deep. Taking it out is what lets
+//                    the floor at 90 read as depth instead of as weight.
+// 1250 Hz   at 200   AIR AND WIND — the band breath lives in, held up so the
+//                    breath is audible as movement rather than as hiss.
+// 2600 Hz   at 205   CLARITY. LEADER lifts 1.9-4.2 kHz because that is where
+//                    consonants are told apart; a whisper has no volume to spare
+//                    and survives entirely on articulation, so it needs this
+//                    more than a loud voice does. Genius is not obscurity.
+// 4200 Hz   at 120   METAL — a small hard glint at the top. Enough to ring,
+//                    far short of sibilance. FIRE is the roughness, not a band:
+//                    it is irregularity, and irregularity has no frequency.
+tone 90 245 200 230 420 120 1250 200 2600 205 4200 120
 
 // THE RASP, KEPT.
 // roughness 4 unchanged — it is the identity. flutter comes down 7 -> 3: an
@@ -75,13 +102,23 @@ flutter 6
 // Consonants stay high. A breath-carried voice has no volume to spare and
 // survives entirely on articulation; drop these and the character becomes a
 // mumble, which is old but not ancient.
-consonants 94 86
+// CLARITY AND GENIUS AS SETTINGS, NOT AS CLAIMS.
+// The highest consonants of any voice here. A breath-carried voice has no
+// loudness to spend and survives on articulation alone; drop these and the
+// character becomes a mumble, which is old but not ancient. An oracle that
+// cannot be made out is not mysterious, it is a poor recording.
+consonants 98 92
 
 // A little more room than before (40/5 -> 80/12). Still not a hall — a whisper
 // in a cathedral is a sillier thing — but no longer pressed against the ear.
 // A STONE ROOM. Longer and quieter than before — the space a druid is heard in
 // is not a hall he is addressing you across, it is somewhere with rock in it.
-echo 150 10
+// ETERNAL IS A LONG ROOM, NOT A LOUD ONE. 220 ms is a chamber in rock — long
+// enough that the voice is still arriving after it has stopped, quiet enough
+// that it never becomes a hall being addressed across. This is the one place a
+// tail is right: everywhere else reverberation puts a voice OUTSIDE you, and
+// here outside is where it should be, because it was here first.
+echo 220 9
 
 // AUTHORITY FROM ABSOLUTE.
 // The old curve spiked the top stress levels +95 and +150 cents: it argued and

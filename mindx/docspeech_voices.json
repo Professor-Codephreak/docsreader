@@ -147,12 +147,12 @@
     {
      "id": "vclone",
      "label": "vCLONE",
-     "title": "vCLONE \u2014 your own voice, cloned. Not available yet.",
+     "title": "voice not cloned",
      "engine": "voicey",
      "voice": "",
      "rate": 0,
      "disabled": true,
-     "note": "RESERVED, AND SHOWN RATHER THAN HIDDEN. A cast with a gap in it is more confusing than a locked door, so the slot is visible and refuses when pressed. It will clone from an uploaded reference through the voicey neural path; until that is wired end to end and gated, selecting it does nothing and says so."
+     "note": "The hover says four words and stops there. An empty slot invites a question; a paragraph of roadmap answers a question nobody asked and dates badly. The clone tools are being built in mindX/voicey from ollywoo with faicey \u2014 when they land this entry gets an engine and a voice, and until then it says exactly what is true."
     }    ,
     {
      "id": "zen",
@@ -161,7 +161,60 @@
      "engine": "espeak-ng",
      "voice": "en-zen+zen",
      "rate": 150,
+     "alternates": [
+      {
+       "id": "zen_f",
+       "label": "ZEN",
+       "surfaces": ["deltaverse"],
+       "title": "ZEN",
+       "engine": "layered",
+       "voice": "zen_stereo"
+      }
+     ],
+     "_alternates": "THE LABEL DOES NOT CHANGE, AND THAT IS THE FEATURE. Every other alternate in this file renames its button — CLASSIC becomes H.A.L, then K.I.T.T — because those are different characters and you should be able to see which one you picked. ZEN's second face is the same voice in a different body, and announcing it would tell you what to hear before you heard it. Press again; the only indicator is the sound.",
      "note": "Built the way en-earth was \u2014 the features Japanese, Korean, Cantonese, Mandarin and Tibetan speakers of English AGREE on, so it imitates none of them. Syllable timing is where the calm actually lives: every one of those languages is syllable- or mora-timed where English is stress-timed, and syllables of even length do not rush. The l/r merger and any vowel substitution that changes which WORD is heard were deliberately left out, because a voice that cannot be understood is not calm, it is obscure. Measured f0 118.5 Hz."
+    }    ,
+    {
+     "id": "translator",
+     "label": "TRANSLATOR",
+     "surfaces": ["deltaverse"],
+     "_surfaces": "DELTAVERSE ONLY. The mindX reader is a document reader and its cast is finished; these are experiments in tracking and placement, and they belong where experiments belong. A voice with no `surfaces` key appears everywhere.",
+     "title": "TRANSLATOR \u2014 the reference in one ear and a second language in the other",
+     "engine": "layered",
+     "voice": "translator",
+     "channels": 2,
+     "sentenceSilence": 0.6,
+     "layers": [
+      {"role": "body", "engine": "piper", "voice": "en_GB-alan-medium",
+       "gain": 1.0, "pan": -0.55,
+       "why": "the reference, placed left"},
+      {"role": "second", "engine": "espeak-ng", "voice": "fr", "rate": 170,
+       "gain": 0.55, "pan": 0.75, "anchor": true,
+       "why": "the other language, placed right and ANCHORED to the body at every phrase boundary"}
+     ],
+     "note": "THE VOICE THAT KEPT THE DELAY, ON PURPOSE. Everywhere else an overlay a beat behind the body is the bug — it is heard as a second person rather than as a timbre, which is why LEADER stopped being layered. Here it is the point: two speakers, placed apart, one following the other. `anchor` fits the second voice to the body at every phrase boundary rather than only at the sentence, so it tracks rather than wanders. CHOOSE THE LANGUAGE by changing the second layer's `voice` to any espeak-ng language code \u2014 fr, de, es, it, pt, ru, zh, ja, ko, hi, ar. HONEST LIMIT: espeak reads the TEXT IT IS GIVEN with that language's phonemes and prosody. It does not translate. Given English text a French voice produces English read by a French speaker, which is the interpreter-booth SOUND without the interpretation. Real translation needs a translation step feeding pre-translated text into the second layer, and the recipe already accepts that \u2014 it is a text source, not a language model."
+    }    ,
+    {
+     "id": "zen_stereo",
+     "label": "ZEN",
+     "surfaces": ["deltaverse"],
+     "hidden": true,
+     "_hidden": "Reached only as ZEN's second face, never listed on its own.",
+     "title": "ZEN",
+     "engine": "layered",
+     "voice": "zen_stereo",
+     "channels": 2,
+     "sentenceSilence": 0.5,
+     "layers": [
+      {"role": "body", "engine": "piper", "voice": "en_GB-jenny_dioco-medium",
+       "rate": 168, "gain": 1.0, "pan": -0.35,
+       "why": "JAIMLA carries the words. The gender swap is a swap of the BODY \u2014 neural out, jaimla in \u2014 not a pitch shift on a male voice, because pitch is not gender."},
+      {"role": "calm", "engine": "espeak-ng", "voice": "en-zen+zen", "rate": 150,
+       "gain": 0.38, "pan": 0.55, "band": [200, 2400], "anchor": true,
+       "why": "the existing ZEN, placed opposite her and anchored at every phrase boundary. It is band-limited to 200-2400 Hz so it colours rather than competes \u2014 the same lesson LEADER cost: a layer with full-band energy is a second speaker."}
+     ],
+     "eq": [[110, 320, 1.5], [420, 640, -2.5], [1800, 3400, 2.5], [4800, 11000, -2.0]],
+     "note": "ZEN's second face: the same unhurried delivery in a female body, in stereo. The two are placed apart rather than summed, because depth comes from separation \u2014 that is the whole reason to have a second channel. A gentler version of LEADER's shaping: a small floor, the 420-640 Hz cut (mud reads as EFFORT, and effort is what this voice must never sound like), a clarity lift, and the top rolled off because sibilance reads as tension."
     }
   ],
   "speeds": {

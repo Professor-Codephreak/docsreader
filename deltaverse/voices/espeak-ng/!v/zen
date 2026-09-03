@@ -21,7 +21,7 @@ pitch 104 130
 // gently reduced. Sibilance is what makes a voice feel tense, so there is very
 // little of it here. The 1.8 kHz point is kept up because that is intelligibility
 // and calm is no excuse for mumbling.
-tone 260 190 900 235 1800 175 2500 120 3600 70
+tone 110 205 300 195 460 130 900 230 2100 200 3000 130 4600 60
 
 // An open, relaxed tract: F1 and F2 are broad rather than peaked, which is what
 // an unconstricted throat measures like. Nothing above F5 is doing much work.
@@ -49,7 +49,12 @@ flutter 1
 // authority; this one lets them settle, because hard consonants read as
 // insistence. It stays well clear of mumbling — the tone curve holds 1.8 kHz up
 // for exactly that reason.
-consonants 70 62
+// Raised from 70/62. Softening the consonants was making the voice restful and
+// slightly indistinct, and those are not the same thing: LEADER's lesson is that
+// a voice insists by being CLEARER rather than louder, and the same trade buys
+// calm without vagueness. Still the softest in the cast — nothing here is
+// struck — but every word arrives.
+consonants 78 70
 
 // A large, soft, quiet space. Long enough to suggest a room with air in it,
 // quiet enough that it never becomes a hall you are being addressed across.
