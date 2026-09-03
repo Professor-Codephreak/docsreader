@@ -1,93 +1,105 @@
 <!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>docsreader — read aloud by itself | DeltaVerse</title>
-<meta name="description" content="The docsreader README, read aloud by docsreader. GitHub strips script from a README, so the LISTEN button lives here.">
+<title>docsreader — the page that reads itself | DeltaVerse</title>
+<meta name="description" content="docsreader reading its own README aloud. Rendered once, stored, and played from the file every time after.">
 <link rel="preconnect" href="https://deltaverse.pythai.net">
 <style>
-:root{--bg0:#000;--bg1:#080a16;--txt:#fff;--muted:rgba(255,255,255,.76);--quiet:rgba(255,255,255,.42);
+:root{--bg0:#000;--bg1:#080a16;--txt:#fff;--muted:rgba(255,255,255,.78);--quiet:rgba(255,255,255,.42);
   --cy:34,211,238;--vi:157,78,221;--am:255,176,84;
   --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 *{box-sizing:border-box}
 body{margin:0;background:radial-gradient(120% 70% at 50% 0%,var(--bg1) 0%,var(--bg0) 60%);
   color:var(--txt);font-family:var(--sans);line-height:1.65}
-.wrap{max-width:80ch;margin:0 auto;padding:46px 24px 100px}
-h1{font-size:clamp(28px,5vw,42px);margin:0 0 6px;letter-spacing:-.015em}
-h2{margin:38px 0 8px;font-size:12px;font-family:var(--mono);letter-spacing:.2em;text-transform:uppercase;color:rgb(var(--am))}
-h3,h4{margin:24px 0 6px;font-size:17px}
+.wrap{max-width:82ch;margin:0 auto;padding:40px 24px 130px}
+h1{font-size:clamp(27px,5vw,42px);margin:0 0 6px;letter-spacing:-.015em}
+.lede{color:var(--quiet);font-size:14.5px;margin:0 0 22px}
+h2{margin:34px 0 8px;font-size:12px;font-family:var(--mono);letter-spacing:.2em;text-transform:uppercase;color:rgb(var(--am))}
+h3{margin:22px 0 6px;font-size:17px}
 p{margin:0 0 14px;color:var(--muted)}
-li{color:var(--muted);margin:4px 0}
+li{color:var(--muted);margin:5px 0}
 a{color:rgb(var(--cy));text-decoration:none;border-bottom:1px solid rgba(var(--cy),.3)}
 code{font-family:var(--mono);font-size:.9em;color:rgb(var(--am));background:rgba(255,255,255,.05);padding:1px 5px;border-radius:4px}
 pre{font-family:var(--mono);font-size:12px;line-height:1.6;color:var(--quiet);background:rgba(0,0,0,.4);
   border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:14px 16px;overflow-x:auto;margin:0 0 16px}
 pre code{background:none;padding:0;color:inherit}
-hr{border:0;height:1px;margin:32px 0;background:linear-gradient(90deg,rgba(var(--cy),.4),rgba(var(--vi),.3),transparent)}
-table{border-collapse:collapse;margin:0 0 6px;width:100%}
-td{padding:6px 10px 6px 0;border-bottom:1px solid rgba(255,255,255,.07);color:var(--muted);font-size:14px;vertical-align:top}
-.src{font-family:var(--mono);font-size:11px;color:var(--quiet);margin-top:6px}
+hr{border:0;height:1px;margin:30px 0;background:linear-gradient(90deg,rgba(var(--cy),.4),rgba(var(--vi),.3),transparent)}
+table{border-collapse:collapse;margin:0 0 14px;width:100%}
+th,td{padding:6px 10px 6px 0;border-bottom:1px solid rgba(255,255,255,.07);color:var(--muted);font-size:14px;vertical-align:top;text-align:left}
+th{color:rgba(255,255,255,.6);font-weight:600;font-size:12px}
+blockquote{border-left:2px solid rgba(var(--vi),.5);padding-left:14px;margin:0 0 14px;font-style:italic;color:var(--muted)}
+
+.status{font-family:var(--mono);font-size:11.5px;color:var(--quiet);min-height:1.6em;margin:0 0 6px;line-height:1.7}
+.status.bad{color:rgba(255,150,150,.85)}
+.status b{color:rgba(255,255,255,.72);font-weight:400}
+.bar{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin:0 0 8px}
+.bar button{font:inherit;font-size:12.5px;font-family:var(--mono);letter-spacing:.12em;padding:10px 20px;border-radius:9px;
+  background:rgba(var(--cy),.14);color:rgb(var(--cy));border:1px solid rgba(var(--cy),.45);cursor:pointer}
+.bar button:hover{background:rgba(var(--cy),.24)}
+.bar button[disabled]{opacity:.45;cursor:progress}
+.bar button.stopping{background:rgba(248,81,73,.14);color:#ff6b64;border-color:rgba(248,81,73,.72)}
+.bar select{font:inherit;font-size:12.5px;font-family:var(--mono);padding:9px 11px;border-radius:9px;
+  background:#0b0f1a;color:#e6edf3;border:1px solid rgba(255,255,255,.18)}
+.bar select option{background:#0b0f1a;color:#e6edf3}
+.bar audio{height:34px;flex:1 1 220px;min-width:0}
+.bar audio:not([src]){display:none}
+.dl{font-family:var(--mono);font-size:11px;letter-spacing:.1em;padding:10px 14px;border-radius:9px;
+  background:rgba(var(--am),.14);color:rgb(var(--am));border:1px solid rgba(var(--am),.45);text-decoration:none;white-space:nowrap}
+#readme{margin-top:26px}
+#readme:empty{display:none}
+.stored{font-family:var(--mono);font-size:10.5px;color:var(--quiet);margin:0 0 10px}
 .foot{margin-top:56px;padding-top:18px;border-top:1px solid rgba(255,255,255,.12);
   font-family:var(--mono);font-size:11px;color:var(--quiet);line-height:1.9}
 </style>
 
 <div class="wrap">
 <h1>docsreader</h1>
-<p>Two readers that speak a document aloud and light the words as they go, and the one lesson that separates them.</p>
-<pre data-noread>
-mindx/       the mindX reader — rendered audio, XMMS transport, scope + spectrum
-deltaverse/  the DeltaVerse reader — browser synthesis, block highlighting, an audio store
-</pre>
-<p>Both give a page a <strong>LISTEN</strong> button that opens a panel and starts reading in the same gesture — an open panel with a silent play button asks you to press a second button to do the thing you already asked for.</p>
-<hr>
-<h2><code>mindx/</code> — the rendered reader</h2>
-<p>It lives in its own files, as JavaScript. It used to be assembled as strings by the server that served it, and one escape too few put a real newline inside a string literal and took the whole player down on a live page. Code written by one language to be run by another cannot be linted, cannot be syntax-checked before it ships, and cannot be tested outside the thing that generates it — so it is written directly now.</p>
-<li><strong>XMMS/Winamp 2.x anatomy</strong> — title marquee, LED clock, small visualiser, one</li>
-<p>transport row, seek bar, volume and balance, and two buttons that open the other two windows. Borrowed on purpose: that layout settled this problem in 1997.</p>
-<li><strong>PL is not a metaphor</strong> — a document&#x27;s *parts* are a playlist.</li>
-<li><strong>Oscilloscope and spectrum</strong>, with a zoom from the analyser&#x27;s full ~43 ms</li>
-<p>window down to <strong>0.7 ms</strong>, where a waveform stops being a green smear and becomes a pitch period you can count.</p>
-<li><strong>Volume to 400 %</strong>, remembered per voice — an <code>&lt;audio&gt;</code> element&#x27;s own volume</li>
-<p>is capped at 1.0 and can only attenuate, so above 100 % this drives a Web Audio <code>GainNode</code> and reports the amplification in dB.</p>
-<li><strong>Stereo balance</strong> on a real <code>StereoPannerNode</code>, absent rather than faked where</li>
-<p>the browser has none.</p>
-<li><strong>A window</strong> — drag, resize, and shade to a bar carrying transport, timeline,</li>
-<p>download and the oscilloscope. Nothing is duplicated to make the small mode work: the bar *is* the transport in both.</p>
-<pre data-noread>
-cd mindx &amp;&amp; npm run check &amp;&amp; npm run serve
-# http://localhost:8899/examples/standalone.html   (mock backend included)
-</pre>
-<h3>The backend contract</h3>
-<p>One endpoint, two shapes:</p>
-<pre data-noread>
-GET {base}?engine=&amp;voice=&amp;rate=&amp;format=json  -&gt; {state, manifest:{parts:[{file,seconds,bytes,words,backend}]}}
-GET {base}/{part.file}?engine=&amp;voice=&amp;rate=  -&gt; audio/ogg   (Range-capable)
-</pre>
-<p><code>examples/mock_backend.py</code> is forty lines that satisfy it, so the player runs with no mindX at all.</p>
-<hr>
-<h2><code>deltaverse/</code> — the synthesis reader</h2>
-<p>Reads the document <strong>the browser is already showing</strong> — no rendering service, no audio files, nothing fetched. It works on a static host and would work from IPFS. Progress is driven by the synthesiser&#x27;s own <strong>word-boundary events</strong> rather than by a timer, which is why the highlight tracks the voice instead of drifting.</p>
-<p>When a page *has* been rendered ahead, it plays the file instead and lights the <strong>block</strong> (a file has no word boundaries, but the manifest carries the second each block begins).</p>
-<p><code>render/</code> rebuilds a voice into the store:</p>
-<pre data-noread>
-python3 render/blocks.py https://host/page.html     # reproduce collect(), verified by checksum
-python3 render/render_neural.py voices neural       # piper -&gt; opus + manifest with marks
-</pre>
-<h3>Three fixes worth carrying into any reader</h3>
-<p>1. <strong>Falling back into silence is not a fallback.</strong> The reader dropped to live synthesis on any audio error — including on machines with <strong>zero installed voices</strong>, every headless Linux, which is precisely the machine that most needs the rendered audio. Degrading from something that failed once to something that *cannot work* is strictly worse than staying put and saying so. 2. <strong>Never show a state the machine cannot be in.</strong> After that fallback the transport showed the pause glyph while nothing could possibly play. 3. <strong><code>cache: &#x27;force-cache&#x27;</code> on a mutable manifest pins readers to the first render they ever saw.</strong> Re-rendering a voice from espeak-ng to piper changed nothing in any browser that had visited before — it kept playing the old voice and reporting the old duration. The manifest must revalidate (<code>no-cache</code>, one conditional request, usually a 304), and the part URLs must carry a version derived from the render, so new audio is a different resource rather than the same name with different bytes.</p>
-<hr>
-<h2>The lesson the two share</h2>
-<p>The same optimisation is correct in one and a bug in the other.</p>
-<p>The live substrate behind these readers links particles by proximity and tests only its eight array-neighbours — fine at 30 fps, because the nodes <strong>drift</strong>: a link missed this frame forms two seconds later. Copied faithfully into a *still* renderer it drew ten links across sixty-four nodes and read as scattered dots. A still has no later.</p>
-<p><strong>An optimisation that is correct in a moving field is a bug in a frozen one.</strong></p>
-<hr>
-<h2>Licence</h2>
-<p>Apache-2.0. Built for <a href="https://mindx.pythai.net">mindX</a> and <a href="https://deltaverse.pythai.net">DeltaVerse</a> by <a href="https://github.com/Professor-Codephreak">Professor Codephreak</a>.</p>
+<p class="lede">The page reads itself. It renders once, keeps the file, and plays the file every time after.</p>
 
-<div class="foot" data-noread>
-  This page is the <a href="https://github.com/Professor-Codephreak/docsreader">docsreader</a>
-  README, read aloud by docsreader. GitHub strips <code>&lt;script&gt;</code> from a README, so a
-  LISTEN button cannot run there — it runs here instead, and the badge in the README links to it.
+<div class="bar" data-noread>
+  <button id="play" type="button">▶ READ THIS PAGE</button>
+  <label style="font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;color:var(--quiet)">VOICE
+    <select id="voice" aria-label="voice"></select></label>
+  <audio id="au" controls preload="none"></audio>
+  <a id="dl" class="dl" hidden download>⇣ KEEP</a>
+</div>
+<p class="status" id="status" role="status" aria-live="polite"></p>
+<p class="stored" id="stored" data-noread></p>
+
+<h2>What this page is</h2>
+<p>A reader that speaks a document aloud and lights each word as it goes — pointed at its own
+README. Everything below the line is <b>ingested at load</b> from a copy of that README kept on
+this domain, so the page and the repository cannot drift apart while still being one fetch and
+no cross-origin request.</p>
+
+<h2>Rendered once, then never again</h2>
+<p>The first press sends the text to be synthesised and gets back an ordinary Opus file. That
+file is <b>kept</b> — on the server, keyed by a hash of the exact text and voice, and its address
+is remembered here in your browser. Every play after the first is a plain audio fetch: no
+synthesiser, no wait, no CPU on anyone's machine. Change a word of the README and the hash
+changes with it, so the stale recording can never be served for text that no longer exists.</p>
+<p>That is the whole trick, and it is the reason a page can afford to read itself aloud at all.
+Speech is expensive exactly once.</p>
+
+<h2>Two ways it can speak, and it says which</h2>
+<p><b>file</b> — the stored recording. Instant, seekable, downloadable, and it works on a machine
+with no speech voices installed at all, which is every headless Linux and a surprising number of
+desktops.</p>
+<p><b>live</b> — your own browser's synthesiser, used only before the first render exists. Nothing
+is downloaded and nothing leaves the page, but the output cannot be captured: there is no browser
+API that hands you its samples, which is why the keepable file is a second rendering rather than a
+recording of the first.</p>
+
+<hr>
+<div id="readme"></div>
+
+<div class="foot">
+  DeltaVerse · docsreader ·
+  <a href="/voices">the voices</a> ·
+  <a href="/docsplayer">doc.player</a> ·
+  <a href="https://github.com/Professor-Codephreak/docsreader">the repository</a><br>
+  <code>?autoplay=0</code> loads silent · <code>?fresh=1</code> ignores the stored recording
 </div>
 </div>
 
@@ -96,7 +108,219 @@ python3 render/render_neural.py voices neural       # piper -&gt; opus + manifes
 <script src="/engine/ngn/doc-reader.js"></script>
 <script defer src="/engine/ngn/audio_rack.js"></script>
 <script>
-  if (window.DVVoices) DVVoices.ready().then(function () {
-    if (window.DVDocReader) DVDocReader.mount();
+(function () {
+  'use strict';
+  var SRC = '/docsreader-src/README.md';
+  var KEY = 'dv_docsreader_render_v1';
+  var PLAY = document.getElementById('play'), AU = document.getElementById('au');
+  var DL = document.getElementById('dl'), VOICE = document.getElementById('voice');
+  var ST = document.getElementById('status'), STORED = document.getElementById('stored');
+  var BODY = document.getElementById('readme');
+  var blocks = [], manifest = null, reader = null;
+  var q = new URLSearchParams(location.search);
+
+  function say(m, bad) { ST.innerHTML = m || ''; ST.classList.toggle('bad', !!bad); }
+  function kb(n) { return n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.round(n / 1024) + ' KB'; }
+  function mmss(s) { s = Math.round(s || 0); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+
+  // ── the README, rendered ────────────────────────────────────────────
+  // A very small markdown subset, on purpose. This reads ONE document whose
+  // shape is known, and a full parser would be a large dependency plus an
+  // injection surface for the sake of syntax this file does not use. Every
+  // element is built with textContent; the only markup that survives is the
+  // markup this function chooses to create.
+  function md(src) {
+    var out = [], lines = src.replace(/\r/g, '').split('\n'), i = 0;
+    function esc(t) { var d = document.createElement('i'); d.textContent = t; return d.innerHTML; }
+    function inline(t) {
+      return esc(t)
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+        // IMAGES BEFORE LINKS, because ![alt](src) is a link pattern with a bang
+        // in front of it. Handled second, the badge in this README became an <a>
+        // pointing at a PNG — a link that navigates away from the page instead of
+        // showing the image on it. Marked data-noread as well: alt text is a
+        // label, not prose, and a reader that says "LISTEN to this README" in the
+        // middle of a paragraph is reading the furniture.
+        .replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, function (m, alt, src) {
+          return /^(https?:|\/)/.test(src)
+            ? '<img data-noread src="' + esc(src) + '" alt="' + alt + '" style="max-width:100%;vertical-align:middle">'
+            : '';
+        })
+        .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, function (m, txt, href) {
+          return /^(https?:|\/|#)/.test(href) ? '<a href="' + esc(href) + '">' + txt + '</a>' : txt;
+        });
+    }
+    while (i < lines.length) {
+      var l = lines[i];
+      if (/^```/.test(l)) {                                  // fenced code — never read aloud
+        var buf = []; i++;
+        while (i < lines.length && !/^```/.test(lines[i])) buf.push(lines[i++]);
+        i++;
+        out.push('<pre data-noread><code>' + esc(buf.join('\n')) + '</code></pre>');
+        continue;
+      }
+      if (/^#{1,4}\s/.test(l)) {
+        var lvl = l.match(/^#+/)[0].length;
+        out.push('<h' + Math.min(3, lvl + 1) + '>' + inline(l.replace(/^#+\s*/, '')) + '</h' + Math.min(3, lvl + 1) + '>');
+        i++; continue;
+      }
+      if (/^>\s?/.test(l)) { out.push('<blockquote>' + inline(l.replace(/^>\s?/, '')) + '</blockquote>'); i++; continue; }
+      if (/^\s*[-*]\s+/.test(l)) {
+        var items = [];
+        while (i < lines.length && /^\s*[-*]\s+/.test(lines[i])) items.push('<li>' + inline(lines[i++].replace(/^\s*[-*]\s+/, '')) + '</li>');
+        out.push('<ul>' + items.join('') + '</ul>'); continue;
+      }
+      if (/^\s*\|/.test(l)) {                                // a table, header row first
+        var rows = [];
+        while (i < lines.length && /^\s*\|/.test(lines[i])) rows.push(lines[i++]);
+        var cells = rows.filter(function (r) { return !/^\s*\|[\s:|-]+\|\s*$/.test(r); })
+          .map(function (r) { return r.trim().replace(/^\||\|$/g, '').split('|'); });
+        if (cells.length) {
+          out.push('<table><tr>' + cells[0].map(function (c) { return '<th>' + inline(c.trim()) + '</th>'; }).join('') + '</tr>' +
+            cells.slice(1).map(function (r) {
+              return '<tr>' + r.map(function (c) { return '<td>' + inline(c.trim()) + '</td>'; }).join('') + '</tr>';
+            }).join('') + '</table>');
+        }
+        continue;
+      }
+      if (/^\s*(-{3,}|={3,})\s*$/.test(l)) { out.push('<hr>'); i++; continue; }
+      if (!l.trim()) { i++; continue; }
+      var para = [];
+      while (i < lines.length && lines[i].trim() && !/^(#{1,4}\s|>|\s*[-*]\s|\s*\||```)/.test(lines[i])) para.push(lines[i++]);
+      out.push('<p>' + inline(para.join(' ')) + '</p>');
+    }
+    return out.join('');
+  }
+
+  // ── what the reader collected, as the render service wants it ───────
+  function collect() {
+    if (!window.DVDocReader || !DVDocReader.collect) return [];
+    return DVDocReader.collect(document.body).map(function (b) { return { text: b.text }; });
+  }
+
+  // ── the stored recording ───────────────────────────────────────────
+  // Keyed on the TEXT, not on the page: the server hashes the blocks and the
+  // voice, so a remembered address is only ever valid for the words it was made
+  // from. Edit the README and the key moves with it — a stale recording cannot
+  // be served for text that no longer exists.
+  function remembered(voice) {
+    if (q.get('fresh') === '1') return null;
+    try {
+      var all = JSON.parse(localStorage.getItem(KEY) || '{}');
+      return all[voice] || null;
+    } catch (e) { return null; }
+  }
+  function remember(voice, m) {
+    try {
+      var all = JSON.parse(localStorage.getItem(KEY) || '{}');
+      all[voice] = { key: m.key, url: m.parts[0].url, seconds: m.seconds, bytes: m.bytes,
+                     voiceName: m.voiceName, at: Date.now() };
+      localStorage.setItem(KEY, JSON.stringify(all));
+    } catch (e) {}
+  }
+  function showStored(m) {
+    if (!m) { STORED.textContent = ''; return; }
+    STORED.innerHTML = 'stored recording · <b>' + (m.voiceName || '') + '</b> · ' +
+      mmss(m.seconds) + ' · ' + kb(m.bytes) + ' · plays from the file, no synthesis';
+  }
+
+  function attach(m, autoplay) {
+    manifest = m;
+    AU.src = m.url || m.parts[0].url;
+    DL.href = AU.src;
+    DL.download = 'docsreader — ' + (m.voiceName || 'reading') + '.opus';
+    DL.hidden = false;
+    showStored(m);
+    paint();
+    if (autoplay) start();
+  }
+
+  function paint() {
+    var on = !AU.paused && !!AU.src;
+    PLAY.classList.toggle('stopping', on);
+    PLAY.textContent = on ? '■ STOP' : '▶ READ THIS PAGE';
+  }
+  AU.addEventListener('play', paint);
+  AU.addEventListener('pause', paint);
+  AU.addEventListener('ended', function () { paint(); });
+
+  function start() {
+    // A REFUSAL IS NOT A HANG. The browser will not begin audio without a
+    // gesture, and it says so through the promise rather than an error event.
+    // Caught, said, and turned into a button that does have a fresh gesture on
+    // it — never a play glyph that has already been turned down.
+    var p = AU.play();
+    if (p && p.then) {
+      p.then(function () { say('reading — the stored file, no synthesis'); paint(); })
+       .catch(function () {
+         paint();
+         say('ready — <b>press READ</b>. This browser will not start audio on its own ' +
+             'until you have interacted with the page.');
+       });
+    }
+  }
+
+  function render(voice, autoplay) {
+    var mem = remembered(voice);
+    if (mem) { say('stored recording found — playing the file'); attach(mem, autoplay); return; }
+    if (!blocks.length) blocks = collect();
+    if (!blocks.length) { say('nothing to read', true); return; }
+    PLAY.disabled = true;
+    say('rendering ' + blocks.length + ' blocks once — every play after this is the file');
+    fetch('/docsplayer/render', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: location.href, title: 'docsreader', voice: voice, blocks: blocks })
+    }).then(function (r) {
+      return r.json().then(function (j) { if (!r.ok) throw new Error(j.detail || ('HTTP ' + r.status)); return j; });
+    }).then(function (m) {
+      remember(voice, m);
+      say((m.cached ? 'already rendered — ' : 'rendered in ' + m.renderSeconds + 's — ') +
+          'kept as a file, ' + mmss(m.seconds) + ' · ' + kb(m.bytes));
+      attach({ url: m.parts[0].url, seconds: m.seconds, bytes: m.bytes, voiceName: m.voiceName, key: m.key }, autoplay);
+    }).catch(function (e) {
+      say(String((e && e.message) || e), true);
+    }).then(function () { PLAY.disabled = false; });
+  }
+
+  PLAY.addEventListener('click', function () {
+    if (!AU.paused && AU.src) { AU.pause(); try { AU.currentTime = 0; } catch (e) {} paint(); return; }
+    if (AU.src) { start(); return; }
+    render(VOICE.value || 'neural', true);
   });
+  VOICE.addEventListener('change', function () {
+    AU.removeAttribute('src'); DL.hidden = true; manifest = null; paint();
+    render(VOICE.value, !AU.paused);
+  });
+
+  // ── ingest, then offer to read ─────────────────────────────────────
+  fetch(SRC, { cache: 'no-cache' })
+    .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+    .then(function (src) {
+      BODY.innerHTML = md(src);
+      if (window.DVVoices && window.DVDocReader) {
+        DVVoices.ready().then(function () {
+          // the panel rides along for word highlighting, the deck and the transport
+          reader = DVDocReader.mount({ root: document.querySelector('.wrap'), label: 'docsreader' });
+          blocks = collect();
+          say('ingested <b>' + blocks.length + '</b> blocks from the README');
+          var mem = remembered(VOICE.value || 'neural');
+          if (mem) { attach(mem, q.get('autoplay') !== '0'); }
+          else if (q.get('autoplay') !== '0') { render(VOICE.value || 'neural', true); }
+        });
+      }
+    })
+    .catch(function (e) { say('could not read the README copy: ' + e.message, true); });
+
+  fetch('/docsplayer/voices').then(function (r) { return r.json(); }).then(function (d) {
+    d.voices.forEach(function (v) {
+      var o = document.createElement('option');
+      o.value = v.id; o.disabled = !!v.disabled;
+      o.textContent = v.name + (v.disabled ? '  (not yet)' : '');
+      o.title = v.note || '';
+      VOICE.appendChild(o);
+    });
+    VOICE.value = d.default || 'neural';
+  }).catch(function () { VOICE.disabled = true; });
+})();
 </script>
