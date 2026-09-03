@@ -38,11 +38,72 @@ const THEME = {
 
 const snap = () => (window.listenState ? window.listenState() : null)
 
-function Strip({ caption, children, hint }) {
+// ── HOW WIDE IS THE DECK ACTUALLY ALLOWED TO BE ─────────────────────────────
+//
+// The rack was built at maxWidth 760 and the panel it lives in is 308px wide.
+// The container had overflow-x:auto, so nothing LOOKED broken — the deck simply
+// ran off the side and you scrolled sideways to reach the voice switch. A rack
+// you have to scroll horizontally is a rack with half its controls hidden, and
+// hiding the controls is the one thing a control surface must not do.
+//
+// The panel is also `resize: both`, so its width is a live value the reader sets
+// by dragging, not a constant to design against. ResizeObserver is the only
+// honest answer: measure the box we were actually given, and re-measure whenever
+// it changes. It fires on the drag, on window resize, on the accordion opening,
+// and on a phone rotating — four things that would otherwise need four listeners
+// and would still miss the drag.
+function useBoxWidth(ref) {
+  const [w, setW] = useState(0)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const read = () => setW(el.clientWidth || el.getBoundingClientRect().width || 0)
+    read()
+    if (typeof ResizeObserver === 'undefined') {
+      // no observer: the window is the next best proxy, and better than a constant
+      window.addEventListener('resize', read)
+      return () => window.removeEventListener('resize', read)
+    }
+    const ro = new ResizeObserver(read)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [ref])
+  return w
+}
+
+// THE TIERS. Not a smooth scale: knobs have a size below which they stop being
+// usable with a finger, and text has a size below which it stops being text. So
+// the deck steps between four layouts that were each chosen to work, rather than
+// interpolating into sizes that work at neither end.
+//
+// `stack` is the important one. Below ~250px the five strips cannot sit in a row
+// at any size, so they go to a two-column grid instead of wrapping raggedly —
+// wrap leaves one orphan on the last line and reads as a mistake.
+const TIERS = [
+  { max: 250, id: 'micro', gain: 42, speed: 36, meter: 52, xport: 24, sw: 9,
+    gap: 9, pad: '8px 8px', cap: 8, seg: 11, label: 5, cols: 2 },
+  { max: 340, id: 'narrow', gain: 50, speed: 42, meter: 60, xport: 26, sw: 10,
+    gap: 12, pad: '9px 10px', cap: 8.5, seg: 12, label: 6, cols: 0 },
+  { max: 470, id: 'mid', gain: 56, speed: 48, meter: 66, xport: 28, sw: 10,
+    gap: 16, pad: '10px 12px', cap: 9, seg: 13, label: 7, cols: 0 },
+  { max: Infinity, id: 'wide', gain: 62, speed: 54, meter: 72, xport: 30, sw: 11,
+    gap: 22, pad: '10px 14px', cap: 9, seg: 15, label: 9, cols: 0 },
+]
+const tierFor = (w) => TIERS.find(t => (w || 308) <= t.max) || TIERS[TIERS.length - 1]
+
+function Strip({ caption, children, hint, t }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }} title={hint}>
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      gap: t.id === 'micro' ? 4 : 6, minWidth: 0,
+    }} title={hint}>
       {children}
-      <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '.16em', color: INK3 }}>{caption}</span>
+      <span style={{
+        fontFamily: MONO, fontSize: t.cap, letterSpacing: '.16em', color: INK3,
+        // the caption is the first thing to overflow, and an ellipsis is more
+        // honest than a caption that pushes the knob out of the panel
+        maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>{caption}</span>
     </div>
   )
 }
@@ -63,11 +124,12 @@ function Strip({ caption, children, hint }) {
 // make-up gain where LEADER takes -0.7 — so one global number is wrong by
 // construction: set for one voice it is wrong for the next. Switching voices
 // loads that voice's own gain.
-function Gain({ vol, voiceLabel }) {
+function Gain({ vol, voiceLabel, t }) {
   const db = vol > 100 ? 20 * Math.log10(vol / 100) : (vol > 0 ? 20 * Math.log10(vol / 100) : -Infinity)
   return (
     <Strip
-      caption={voiceLabel ? `GAIN · ${voiceLabel}` : 'GAIN'}
+      t={t}
+      caption={voiceLabel && t.id !== 'micro' ? `GAIN · ${voiceLabel}` : 'GAIN'}
       hint={(vol > 100
         ? `amplified ${db.toFixed(1)} dB above the file`
         : (vol === 100 ? 'the file, unamplified' : `${(-db).toFixed(1)} dB below the file`))
@@ -75,33 +137,35 @@ function Gain({ vol, voiceLabel }) {
       <MetalKnob
         value={vol} min={0} max={400} step={1}
         taper={powTaper(2)} detents={[100]} detentSize={0.03}
-        size={62} color={vol > 100 ? GOLD : GREEN} tone="dark"
+        size={t.gain} color={vol > 100 ? GOLD : GREEN} tone="dark"
         aria-label="volume, up to 400 percent"
         onChange={(v) => window.listenVol && window.listenVol(v)}
       />
       <SegmentDisplay
         value={vol >= 100 ? db.toFixed(1) : String(vol)}
-        digits={5} height={15} color={vol > 100 ? GOLD : GREEN}
+        digits={5} height={t.seg} color={vol > 100 ? GOLD : GREEN}
       />
-      <span style={{ fontFamily: MONO, fontSize: 8.5, color: INK3 }}>
-        {vol >= 100 ? 'dB OVER FILE' : `${vol}% OF FILE`}
-      </span>
+      {t.id === 'micro' ? null : (
+        <span style={{ fontFamily: MONO, fontSize: 8.5, color: INK3 }}>
+          {vol >= 100 ? 'dB OVER FILE' : `${vol}% OF FILE`}
+        </span>
+      )}
     </Strip>
   )
 }
 
 // SPEED. Same 0.5-2.5x the slider spans, with 1x detented.
-function Speed({ rate }) {
+function Speed({ rate, t }) {
   return (
-    <Strip caption="SPEED" hint={`${rate}× playback`}>
+    <Strip t={t} caption="SPEED" hint={`${rate}× playback`}>
       <VintageKnob
         value={rate} min={0.5} max={2.5} step={0.01}
         detents={[1]} detentSize={0.02}
-        size={54} color={BLUE}
+        size={t.speed} color={BLUE}
         aria-label="playback speed"
         onChange={(v) => window.listenSpeed && window.listenSpeed(v)}
       />
-      <SegmentDisplay value={rate.toFixed(2)} digits={4} height={13} color={BLUE} />
+      <SegmentDisplay value={rate.toFixed(2)} digits={4} height={t.seg - 2} color={BLUE} />
     </Strip>
   )
 }
@@ -110,7 +174,7 @@ function Speed({ rate }) {
 // already build, in dBFS, with the meter's own ballistics and peak hold. It
 // reads AFTER the gain node, so it shows what is actually reaching the ear —
 // which is the only reason to put a meter next to a gain knob at all.
-function Level({ playing }) {
+function Level({ playing, t }) {
   const [db, setDb] = useState(-60)
   const raf = useRef(0)
   const buf = useRef(null)
@@ -139,14 +203,15 @@ function Level({ playing }) {
     return () => { stop = true; cancelAnimationFrame(raf.current) }
   }, [])
   return (
-    <Strip caption="LEVEL" hint="RMS after the gain stage, dBFS — what reaches the ear">
+    <Strip t={t} caption="LEVEL" hint="RMS after the gain stage, dBFS — what reaches the ear">
       <Meter
         value={db} min={-60} max={0} scale="db" orientation="vertical"
-        length={72} breadth={13} segments={20} peakHold={900} ballistics
+        length={t.meter} breadth={t.id === 'micro' ? 10 : 13}
+        segments={t.id === 'micro' ? 14 : 20} peakHold={900} ballistics
         zones={[{ upTo: -12, color: GREEN }, { upTo: -3, color: GOLD }, { upTo: 0, color: RED }]}
         disabled={!playing}
       />
-      <SegmentDisplay value={db <= -60 ? '--' : db.toFixed(0)} digits={3} height={13}
+      <SegmentDisplay value={db <= -60 ? '--' : db.toFixed(0)} digits={3} height={t.seg - 2}
         color={db > -3 ? RED : db > -12 ? GOLD : GREEN} />
     </Strip>
   )
@@ -155,29 +220,31 @@ function Level({ playing }) {
 // VOICE. The registry, in the order the picker renders it. A voice change is a
 // different rendering and therefore a different cache key — this is the most
 // expensive control on the panel, so it commits on release, not per step.
-function Voice({ voices, voice }) {
-  const labels = voices.map(v => String(v.label || v.id || '').slice(0, 9).toUpperCase())
+function Voice({ voices, voice, t }) {
+  // the cast is the widest thing on the deck, so the labels are the first thing
+  // the tier shortens: nine characters at full width, five when there is no room
+  const labels = voices.map(v => String(v.label || v.id || '').slice(0, t.label).toUpperCase())
   const i = Math.max(0, voices.findIndex(v => v.id === voice))
   return (
-    <Strip caption="VOICE" hint="each voice is a separate rendering">
+    <Strip t={t} caption="VOICE" hint="each voice is a separate rendering">
       <SegmentSwitch
-        options={labels} value={i} led color={GOLD} size={11}
+        options={labels} value={i} led color={GOLD} size={t.sw}
         onChange={(n) => voices[n] && window.listenVoice && window.listenVoice(voices[n].id)}
       />
     </Strip>
   )
 }
 
-function Transport({ playing, ready, part, parts }) {
+function Transport({ playing, ready, part, parts, t }) {
   return (
-    <Strip caption="TRANSPORT" hint={parts ? `part ${part + 1} of ${parts}` : 'not rendered yet'}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+    <Strip t={t} caption="TRANSPORT" hint={parts ? `part ${part + 1} of ${parts}` : 'not rendered yet'}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: t.id === 'micro' ? 5 : 8 }}>
         <TransportButton
-          kind={playing ? 'pause' : 'play'} active={playing} size={30}
+          kind={playing ? 'pause' : 'play'} active={playing} size={t.xport}
           color={playing ? GREEN : GOLD}
           onClick={() => window.listenToggle && window.listenToggle()}
         />
-        <SegmentDisplay value={parts ? `${part + 1}-${parts}` : '--'} digits={4} height={15}
+        <SegmentDisplay value={parts ? `${part + 1}-${parts}` : '--'} digits={4} height={t.seg}
           color={ready ? GREEN : INK3} />
       </div>
     </Strip>
@@ -199,22 +266,42 @@ function Deck() {
     const id = setInterval(sync, 1000)   // part index advances without an event
     return () => { window.removeEventListener('mindx:listen', sync); clearInterval(id) }
   }, [sync])
+  // The box is measured, not assumed. The outer div is what the panel actually
+  // gave us; everything inside sizes itself from that one number.
+  const box = useRef(null)
+  const w = useBoxWidth(box)
+  const t = tierFor(w)
   if (!s) return null
+  const strips = [
+    <Transport key="x" t={t} playing={s.playing} ready={s.ready} part={s.part} parts={s.parts} />,
+    <Gain key="g" t={t} vol={s.vol} voiceLabel={(s.voices || []).find(v => v.id === s.voice)?.label} />,
+    <Level key="l" t={t} playing={s.playing} />,
+    <Speed key="s" t={t} rate={s.rate} />,
+    <Voice key="v" t={t} voices={s.voices || []} voice={s.voice} />,
+  ]
   return (
+    <div ref={box} style={{ width: '100%', minWidth: 0 }}>
     <DreamknobProvider theme={THEME}>
-      <Rack title="AUDIO DECK" accentColor={GOLD} style={{ maxWidth: 760 }}>
-        <div style={{
+      {/* maxWidth was 760 in a 308px panel. It is now whatever we were given. */}
+      <Rack title={t.id === 'micro' ? 'DECK' : 'AUDIO DECK'} accentColor={GOLD}
+            style={{ maxWidth: '100%', width: '100%' }}>
+        <div style={t.cols ? {
+          // BELOW ~250px THE ROW CANNOT WORK AT ANY KNOB SIZE, so it becomes a
+          // grid. Flex-wrap would leave one orphan strip on the last line, which
+          // reads as a layout that broke rather than one that adapted.
+          display: 'grid', gridTemplateColumns: `repeat(${t.cols}, minmax(0, 1fr))`,
+          justifyItems: 'center', alignItems: 'end',
+          gap: t.gap, padding: t.pad,
+        } : {
           display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end',
-          gap: 22, padding: '10px 14px',
+          justifyContent: 'flex-start',
+          gap: t.gap, padding: t.pad,
         }}>
-          <Transport playing={s.playing} ready={s.ready} part={s.part} parts={s.parts} />
-          <Gain vol={s.vol} voiceLabel={(s.voices || []).find(v => v.id === s.voice)?.label} />
-          <Level playing={s.playing} />
-          <Speed rate={s.rate} />
-          <Voice voices={s.voices || []} voice={s.voice} />
+          {strips}
         </div>
       </Rack>
     </DreamknobProvider>
+    </div>
   )
 }
 

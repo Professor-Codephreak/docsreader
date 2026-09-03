@@ -1,5 +1,5 @@
 language variant
-language en-us
+language en-kitt
 name kitt
 gender male 35
 
@@ -19,14 +19,18 @@ gender male 35
 // and nearly twice the range, because this voice INFLECTS. The dryness is in the
 // timing and the consonants, not in a flat line; a wry remark needs somewhere to
 // go, and hal deliberately has nowhere.
-pitch 132 186
+pitch 128 172
 
-// FORWARD, NOT WARM. The peak moves up to 1.5 kHz — out of the chest and into
+// FORWARD, NOT WARM, AND NASAL WITH IT. The peak moves up to 1.5 kHz — out of the chest and into
 // the mouth — and the top stays open where hal's is rolled off hard. That
 // forwardness is the whole difference in colour: hal sounds like he is in the
 // room with you, this sounds like it is coming out of a dashboard, and it is.
 // The slight lift at 3 kHz is what reads as electronic without being a robot.
-tone 320 165 1500 245 2400 200 3000 170 4200 110
+// The 1050 Hz shelf is the nasality — the performance has a distinctly nasal,
+// prim precision, and without it this is merely a bright voice rather than
+// THAT bright voice. hal is nasal too; they are nasal differently, which is why
+// one shelf sits at 1150 and the other at 1050.
+tone 320 150 1050 210 1500 250 2400 205 3200 175 4200 105
 
 // A shorter, brighter tract: F2 and F3 up, which is what makes a voice sound
 // like it is smiling slightly even when it is not.
@@ -54,7 +58,7 @@ flutter 0
 // CRISP. Every consonant struck cleanly and released. hal articulates like
 // someone with all the time in the world; this articulates like someone who has
 // already finished the sentence and is waiting for you to catch up.
-consonants 92 88
+consonants 96 92
 
 // Almost no room at all — a small hard cabin, close-miked. 26 ms is below the
 // threshold the ear reads as an echo, so it registers as a surface rather than
@@ -68,4 +72,4 @@ echo 26 10
 // something unnerving and something helpful.
 intonation 2
 stressAmp   15 16 17 19 21 24 27 30
-stressAdd    0  8 18 30 44 60  88 120
+stressAdd    0  7 16 27 40 56  82 112

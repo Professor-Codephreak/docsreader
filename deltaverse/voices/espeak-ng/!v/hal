@@ -1,5 +1,5 @@
 language variant
-language en-us
+language en-hal
 name hal
 gender male 40
 
@@ -16,21 +16,27 @@ gender male 40
 // enough to General American that the vowels are right and far enough from RP
 // that it is not the announcer voice.
 
-// MID, AND ALMOST LEVEL. The range is 24 units — the narrowest in the cast apart
+// MID, AND ALMOST LEVEL. The range is 18 units — the narrowest in the cast apart
 // from ancient's zero. Not flat, because flat is a robot; NARROW, because
 // nothing being said is urgent, including the things that ought to be. The base
 // sits mid-male: he is not deep, and reaching for depth would make him
 // threatening, which is the one thing he never sounds.
-pitch 108 132
+pitch 110 128
 
 // WARM AND CLOSE, WITH NO EDGE ANYWHERE.
-// The peak is at 700 Hz, low enough to read as chest and reassurance, and the
+// The peak is at 620 Hz, low enough to read as chest and reassurance, and the
 // curve falls away steadily above 2 kHz so there is no sibilance and no glare.
+//
+// THE NASAL SHELF. A point held up at 1150 Hz that no other voice here has. The
+// performance is mildly nasal throughout — a resonance in the nose that never
+// goes away — and that steady, slightly boxed-in colour is a large part of why
+// the voice reads as an instrument rather than a throat. It is a shelf and not a
+// peak: nasality that is audible as nasality is a cold, and this one is not.
 // The 1.6 kHz point stays up because his diction is immaculate — every syllable
 // is fully formed, and that precision is a large part of the effect. A voice this
 // gentle that you can nevertheless understand perfectly is uncanny in a way that
 // a gentle mumble is not.
-tone 240 195 700 240 1600 185 2400 115 3600 60
+tone 240 190 620 245 1150 205 1600 185 2400 105 3600 50
 
 // An open, unstrained tract. No formant is peaked hard — nothing about this
 // voice is pressed, ever.
@@ -55,13 +61,16 @@ voicing 76
 roughness 0
 flutter 0
 
-// Consonants precise but soft — released fully, never struck. He articulates
+// Consonants precise but SOFT — released fully, never struck. Lower than any
+// other voice in the cast, and lower still than the first draft: he articulates
+// completely without ever attacking a syllable, which is a combination almost no
+// human voice manages and is exactly why it is unnerving. He articulates
 // like someone who has all the time in the world, because he does.
-consonants 78 74
+consonants 74 70
 
 // A small dry room: a speaker in a cabin, not a hall. The point is proximity —
 // he is always closer than you would like.
-echo 60 9
+echo 44 8
 
 // NOTHING IS EVER EMPHASISED, AND THAT IS THE HORROR.
 // stressAmp barely moves across the whole range and stressAdd is a gentle even
@@ -71,4 +80,4 @@ echo 60 9
 // courteous, not withholding.
 intonation 1
 stressAmp   14 14 15 15 16 16 17 17
-stressAdd    0  5 11 17 23 29 36  43
+stressAdd    0  3  7 11 15 19 24  29

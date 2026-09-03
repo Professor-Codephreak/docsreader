@@ -1,0 +1,72 @@
+language variant
+language en-gb-x-rp
+name fairydust
+gender female 18
+
+// CLASSIC, PRESSED FOUR TIMES — fairydust.
+//
+// Taken from the jaimla template and lifted: same base (en-gb-x-rp), same idea
+// that restraint is what makes a voice alluring, carried up an octave and made
+// lighter. Where jaimla is close and warm, this is high and weightless — and it
+// is the only voice in the cast with no authority in it at all, which is the
+// point of putting it at the end of a row of machines that have nothing else.
+
+// AN OCTAVE ABOVE JAIMLA, AND STILL A FIFTH WIDE.
+// jaimla spans F3-C4 (175-262), a perfect fifth, because the narrowness is the
+// intimacy. This keeps the interval and moves the whole thing up: 260-390 is
+// C4-G4, the same 3:2 ratio an octave higher. Keeping the RATIO rather than the
+// span is what makes this read as the same voice grown light rather than as a
+// different one squeaking — an octave up with a wider interval would be shrill,
+// and shrill is the failure mode this voice is one step away from at all times.
+pitch 260 390
+
+// A SHORT, BRIGHT TRACT — AND NO CHEST WHATSOEVER.
+// jaimla lifts F1-F3 and keeps the top soft. This goes further on both counts:
+// the formants are higher again, and F0 is pulled DOWN hard (100 -> 78 at the
+// low end) because weight is the one thing this voice must not have. What is
+// left is all upper-mid — the register a voice occupies when it is not pushing
+// air, only shaping it.
+formant 0  78 104  92
+formant 1 118 132 116
+formant 2 128 134 110
+formant 3 126 128  96
+formant 4 120 118  80
+formant 5 112 108  64
+formant 6 102  96  44
+formant 7  94  88  32
+formant 8  88  82  26
+
+// AIR WITH A SHIMMER ON IT. The peak moves up to 1.6 kHz and there is a
+// deliberate lift at 4.2 kHz that no other voice here has — that band is where
+// breath turns to sparkle, and it is the whole reason the voice reads as
+// dust rather than as a small person. Below 400 Hz there is almost nothing.
+tone 400 105 1600 235 2800 200 4200 165 6000 90
+
+// BREATH IS MOST OF IT.
+// jaimla is voicing 62 with breath 2-5. This is voicing 44 with breath wider
+// still: less than half the signal is fold vibration, and the rest is moving
+// air. That is why it is soft at any volume — there is very little there to be
+// loud with, and the loudness normaliser cannot manufacture a body that was
+// never in the recording.
+breath   5 7 8 8 8 8 7 6
+breathw 130 190 215 215 215 215 190 150
+voicing 44
+roughness 0
+flutter 2
+
+// The lightest consonants in the cast — softer even than jaimla's 58/46. Nothing
+// is struck. The 2.8 kHz shelf in the tone curve is what keeps the words
+// legible, because the consonants themselves are barely doing it.
+consonants 50 40
+
+// A long, quiet shimmer rather than a room: it should sound like it is still
+// there slightly after it has stopped.
+echo 190 7
+
+// IT RISES. jaimla keeps the full melody because the pleasure of that voice is
+// that it moves; this moves more. stressAdd climbs further than any other voice
+// here and stressAmp stays almost flat, so emphasis is entirely a lift and never
+// a push. Nothing in this voice ever gets louder to be heard.
+intonation 1
+stressAmp   12 12 13 13 14 14 15 15
+stressAdd    0 14 32 52 74 96 130 165

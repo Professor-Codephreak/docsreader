@@ -15,13 +15,13 @@ gender male 55
 // not go as low as OVERLORD (79 Hz) because OVERLORD is authority and this is
 // something simpler: mass. 92 -> ~89 Hz, and a range of 14, which is enough to
 // not be a drone and not enough to be an opinion.
-pitch 92 106
+pitch 90 102
 
 // HEAVY LOW, DEAD TOP. Full through the fundamental octave, and everything above
 // 2.5 kHz falls away hard — the opposite of kitt, which lives up there. The 1.4
 // kHz point is held up only enough to keep the words: this voice is understood,
 // not enjoyed.
-tone 200 250 600 200 1400 165 2500 95 3800 40
+tone 190 255 560 215 1400 170 2200 110 3200 60 4000 30
 
 formant 0 102 132 142
 formant 1 100 126 136
@@ -38,8 +38,14 @@ formant 8  66  70  16
 // grain of something built.
 breath 0 0 0 0 0 0 0 0
 breathw 50 55 60 60 60 60 55 50
-voicing 92
-roughness 2
+// PRESSED, NOT RELAXED. voicing up to 98 and roughness to 3: the folds are held
+// hard together, which is what a very low voice sounds like when it is produced
+// with effort rather than resonance. The trace of creak that comes with it is
+// the point — it is the one thing in this voice that is not smooth, and a
+// perfectly smooth version of it sounds like a newsreader who happens to be
+// German rather than like something wearing a person.
+voicing 98
+roughness 3
 flutter 0
 
 // Hard consonants, struck rather than released. Where hal articulates patiently

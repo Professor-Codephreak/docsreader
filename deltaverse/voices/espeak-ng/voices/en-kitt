@@ -1,0 +1,30 @@
+// en-kitt — the pacing of the car.
+//
+// The deliberate opposite of en-hal, on the same phoneme set, so the two are
+// heard as two temperaments rather than two accents.
+//
+// The common mistake is to make this voice FAST. It is not fast; it is CRISP.
+// Every syllable is fully formed and then finished with, which reads as brisk
+// because nothing is ever held. Speeding it up loses the precision that is the
+// whole character and turns a very capable assistant into a chatterbox.
+
+name en-kitt
+language en-kitt 8
+language en 22
+
+phonemes en
+
+// SHORT, AND MORE CONTRASTED. Below default across the board, and the gap
+// between stressed and unstressed is WIDER than English wants rather than
+// narrower: this voice points at things. Compare en-hal, which does the reverse
+// on both counts.
+stressLength 165 165 168 170 200 205 215 225
+
+// Emphasis is real and it arrives as level. He would like it noticed.
+stressAmp 15 16 18 20 22 25 28 31
+
+// Words close together — not run together. 1 keeps the boundaries audible while
+// removing hal's air between them.
+words 1
+
+dictrules 8

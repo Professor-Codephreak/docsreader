@@ -1,0 +1,33 @@
+// en-hal — the pacing of the calm machine.
+//
+// The variant (!v/hal) can shape the timbre but not the TIMING, and timing is
+// the most recognisable thing about this voice. He does not speak quickly and he
+// never runs two clauses together; the space around the words is what makes the
+// politeness feel considered rather than glib, and it is why the line about
+// being afraid lands the way it does.
+//
+// No phoneme substitutions at all. The performance was Canadian and the vowels
+// are General American — there is nothing to change, only to slow down.
+
+name en-hal
+language en-hal 8
+language en 22
+
+phonemes en
+
+// LONG, AND ALMOST EVEN.
+// Default English stretches a stressed syllable well past an unstressed one.
+// These are long across the board and the spread between them is small: nothing
+// is hurried past, and nothing is leaned on. That evenness is the character —
+// a voice that emphasised normally would sound like it had opinions.
+stressLength 215 215 220 220 240 240 255 265
+
+// Amplitude barely moves either. He is not louder on the important word,
+// because to him there is no important word.
+stressAmp 15 15 16 16 17 18 19 20
+
+// THE PAUSE IS THE POINT. A wider gap between words than any other voice in the
+// cast. This one line does more for the impression than the whole variant file.
+words 4
+
+dictrules 8

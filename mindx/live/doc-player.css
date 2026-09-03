@@ -29,7 +29,12 @@ body{font-family:'Inter','SF Pro Text',system-ui,sans-serif;background:#050810;c
   border:1px solid #30363d;border-radius:3px;background:#0d1117;color:#8b949e;cursor:pointer}
 .font-ctrl .deckbtn:hover{color:#e6edf3;border-color:#484f58}
 .font-ctrl .deckbtn.on{color:#e3b341;border-color:#e3b341}
-.ldeck{margin:8px 0 4px;padding:0;background:transparent;max-width:100%;overflow-x:auto}
+.ldeck{margin:8px 0 4px;padding:0;background:transparent;max-width:100%;min-width:0;
+  /* overflow-x:auto was doing the adapting: the rack was built at 760px, the
+     panel is 308px, and the deck simply ran off the side with the voice switch
+     out of reach. The rack now measures this box with a ResizeObserver and lays
+     itself out to fit, so the scrollbar is a backstop rather than the mechanism. */
+  overflow-x:auto}
 .lskills{margin:8px 0 4px;padding:10px 12px;background:#0a0e16;border:1px solid #21262d;border-radius:6px;
   color:#8b949e;font:11px/1.5 ui-monospace,'SF Mono',Menlo,monospace;white-space:pre;overflow-x:auto;max-width:100%}
 .lskills[hidden]{display:none}
@@ -109,6 +114,18 @@ body{font-family:'Inter','SF Pro Text',system-ui,sans-serif;background:#050810;c
 /* accordions — the voice cast, and the things you touch once */
 .vacc{border:1px solid #21262d;border-radius:5px;background:rgba(13,17,23,.7)}
 .vdeck{border-top:1px solid #21262d;margin-top:6px}
+/* FAIRYDUST. Particles are spawned into a fixed-position layer rather than into
+   the button, because the button lives inside an accordion with overflow and a
+   sparkle that gets clipped by its own parent is a sad thing. */
+.spklayer{position:fixed;inset:0;pointer-events:none;z-index:9999}
+.spk{position:fixed;width:5px;height:5px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle,#fff 0%,#ffe9a8 45%,rgba(255,214,120,0) 70%);
+  will-change:transform,opacity;animation:spkfly var(--spk-d,760ms) cubic-bezier(.15,.7,.35,1) forwards}
+@keyframes spkfly{
+  0%{transform:translate(-50%,-50%) scale(.4);opacity:0}
+  12%{opacity:1}
+  100%{transform:translate(calc(-50% + var(--spk-x)),calc(-50% + var(--spk-y))) scale(var(--spk-s,1)) rotate(var(--spk-r,0deg));opacity:0}}
+@media (prefers-reduced-motion:reduce){.spk{display:none}}
 /* A voice that is not ready is SHOWN and refused, not hidden: a gap in the cast
    is more confusing than a locked door. Dimmed, struck through on the label, and
    the cursor says so before you press it. */
@@ -125,7 +142,7 @@ body{font-family:'Inter','SF Pro Text',system-ui,sans-serif;background:#050810;c
 .vdecktog.on{color:#e3b341}
 .vdcar{display:inline-block;transition:transform .15s}
 .vdecktog.on .vdcar{transform:rotate(180deg)}
-.vdeck .ldeck{padding:0 8px 9px;overflow-x:auto}
+.vdeck .ldeck{padding:0 8px 9px;overflow-x:auto;min-width:0}
 .vacc>summary{cursor:pointer;list-style:none;padding:6px 8px;font:600 10px/1.3 'SF Mono',monospace;
   letter-spacing:.14em;color:#c9d1d9;display:flex;justify-content:space-between;align-items:center}
 .vacc>summary::-webkit-details-marker{display:none}

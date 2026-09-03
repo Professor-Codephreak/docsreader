@@ -25,7 +25,8 @@
        "id": "kitt",
        "label": "K.I.T.T",
        "title": "press CLASSIC again \u2014 the car from Knight Rider: bright, quick, precise, faintly superior",
-       "voice": "en-us+kitt",
+       "voice": "en-kitt+kitt",
+       "rate": 160,
        "note": "hal's counterpart and deliberately its opposite everywhere hal commits. hal is warm, slow and leans on nothing; this is forward, quick and leans on quite a lot. Same en-us base so the two read as one character's two moods rather than two accents. The peak moves from 700 Hz (chest, in the room with you) to 1500 Hz (mouth, out of a dashboard)."
       },
       {
@@ -33,13 +34,23 @@
        "label": "T1000",
        "title": "press CLASSIC a third time \u2014 the machine from the future: deep, flat, and not persuading you",
        "voice": "en-t800+t800",
+       "rate": 138,
        "note": "The third face, and the one with no warmth in it. hal is warm and never emphasises; kitt is bright and emphasises constantly; this is neither, because it is not reassuring or helping, it is stating. Accent in voices/en-t800: w->v and th->z/d, the two features anyone can hear. Final-obstruent devoicing was deliberately NOT taken \u2014 it is characteristic and it turns 'bad' into 'bat', and a voice that cannot be trusted to say the word is not usable as a reading voice however good the impression. Measured f0 95.5 Hz against hal's 118.9 and kitt's 170.3."
+      },
+      {
+       "id": "fairydust",
+       "label": "FAIRYDUST",
+       "title": "press CLASSIC a fourth time — high, soft and weightless, from the jaimla template",
+       "voice": "en-gb-x-rp+fairydust",
+       "rate": 168,
+       "note": "Taken from the jaimla template and lifted an octave: same base, same interval (a perfect fifth, 3:2 — keeping the RATIO rather than the span is what makes it read as the same voice grown light rather than a different one squeaking). voicing 44 against jaimla's 62 with breath wider still, so less than half the signal is fold vibration and the rest is moving air — soft at any volume, because there is very little there to be loud with. The 4.2 kHz lift is where breath turns to sparkle. The only voice in the cast with no authority in it whatsoever, which is the point of putting it at the end of a row of machines that have nothing else."
       }
      ],
       "label": "CLASSIC",
       "title": "CLASSIC \u2014 the calm machine of 2001: soft, unhurried, impeccably polite",
       "engine": "espeak-ng",
-      "voice": "en-us+hal",
+      "voice": "en-hal+hal",
+      "rate": 132,
       "tier": "participant",
       "accent": "General American",
       "gender": "male",
@@ -50,14 +61,16 @@
       "id": "leaderofearth",
       "label": "LEADER",
       "title": "leaderofearth — one accent assembled from eight world Englishes (royal, US, Australian, Indian, Mexican, Brazilian, Brooklyn, Slavic); deepest and slowest voice in the set",
-      "engine": "espeak-ng",
-      "voice": "en-earth+leaderofearth",
+      "engine": "piper",
+      "voice": "en_GB-alan-medium",
       "tier": "participant",
       "accent": "Earth — one accent assembled from royal, US, Australian, Indian, Mexican, Brazilian, Brooklyn and Slavic English, on a Caribbean base",
       "gender": "male",
-      "rate": 118,
+      "rate": 150,
+     "pitch": 0.92,
+     "sentenceSilence": 0.85,
       "measured": "f0 117.9 Hz · centroid 1484 · presence 2-5 kHz 23.7% — the deepest voice in the set, and no longer the darkest: presence was 12.4% before the retune",
-      "note": "Deepest voice in the set (117.9 Hz median) and the slowest (118 wpm plus a gap after every word). Authority from mass and pause, not from pitch."
+      "note": "LEADER IS NOW NEURAL, SLOWED AND DEEPENED — not a formant voice at all. It was en-earth+leaderofearth, an espeak variant on an eight-accent composite, and it read at 10.3% WER against classic's 2.6%. It is now the reference model itself (en_GB-alan-medium) at rate 150 (about 0.86x speed) with pitch 0.92, which piper reaches without having a pitch control: length_scale = P/S and the stream declared at SR x P, so duration and pitch move independently. It inherits neural's clarity exactly, because it IS neural. sentenceSilence 0.85 s is the aura of the obvious — a pause after every conclusion, STATED rather than inherited from the speaking rate, because a voice whose character is the beat after the sentence should not have to be slow to get one. The espeak variant stays installed as en-earth+leaderofearth for anyone who wants it."
     },
     {
       "id": "sagi",
