@@ -366,7 +366,7 @@ def render(req: RenderReq, request: Request):
 
 @app.get("/docsplayer/health")
 def health():
-    return {"ok": True, "store": store_status(), "voices": len(VOICES),
+    return {"ok": True, "store": store_status(), "voices": len(voices_table()),
             "voices": len(voices_table())}
 
 
