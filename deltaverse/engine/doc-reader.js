@@ -59,12 +59,19 @@
     '.dv-reader.on{background:rgb(var(--cy,34,211,238));color:#04040a;border-color:rgb(var(--cy,34,211,238))}',
     '.dv-reader .i{font-size:10px;line-height:1}',
     '.dv-reader:focus-visible{outline:2px solid rgb(var(--cy,34,211,238));outline-offset:3px}',
+    // DRAGGABLE AND RESIZEABLE. `resize` needs a non-visible overflow to work at
+    // all, and the min-width is the point below which the transport row cannot
+    // lay out. The max-* are viewport-relative so a remembered size from a large
+    // monitor cannot open off-screen on a phone.
     '.dv-reader-panel{position:fixed;right:18px;bottom:18px;z-index:2147482000;width:312px;',
+    '  resize:both;overflow:auto;min-width:264px;min-height:96px;max-width:96vw;max-height:88vh;',
     '  font-family:var(--mono,ui-monospace,SFMono-Regular,Menlo,monospace);color:rgba(255,255,255,.82);',
     '  background:rgba(6,8,16,.92);border:1px solid rgba(var(--vi,157,78,221),.34);border-radius:12px;',
     '  box-shadow:0 22px 60px rgba(0,0,0,.55);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}',
     '.dv-reader-panel[hidden]{display:none}',
     '.dv-reader-panel.shaded .dvr-body{display:none}',
+    // shaded is a bar: it may still be widened, but height is the title bar
+    '.dv-reader-panel.shaded{resize:horizontal;height:auto!important;min-height:0;overflow:visible}',
     '.dvr-hd{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:grab;user-select:none;',
     '  border-bottom:1px solid rgba(255,255,255,.08);font-size:10px;letter-spacing:.18em;text-transform:uppercase}',
     '.dvr-hd.dragging{cursor:grabbing}',
@@ -643,9 +650,13 @@
     function jump(d) { jumpTo(bi + d); }
 
     // ── the panel's own controls ─────────────────────────────────────────
+    var restored = false;
     function openPanel(open) {
       if (open === undefined) open = pnl.hidden;
       pnl.hidden = !open;
+      // restore on first SHOW: at mount the panel is hidden, and a hidden panel
+      // measures 0x0 so nothing can be clamped against it
+      if (open && !restored) { restored = true; try { panelRestore(); } catch (e) {} }
       btn.classList.toggle('on', open);
       btn.setAttribute('aria-expanded', String(open));
       return open;
@@ -703,6 +714,59 @@
       else progress();
     });
 
+    // ── WHERE YOU PUT IT, AND HOW BIG YOU MADE IT ────────────────────────
+    //
+    // Two traps this file has already fallen into once, both recorded here so the
+    // next person does not repeat them:
+    //
+    //   1. NEVER SAVE WHILE HIDDEN. A hidden panel measures 0x0 at 0,0, so a save
+    //      triggered while closed writes {0,0} and the panel opens in the corner
+    //      at zero size next time.
+    //   2. CLAMP AGAINST THE PANEL, NOT A CONSTANT. An earlier clamp kept 80px
+    //      on screen, which is a title bar and nothing else — you could not reach
+    //      the controls to move it back. The restore clamps so the whole panel
+    //      is inside the viewport where it fits, and to a generous margin where
+    //      it does not.
+    var PKEY = 'dv_reader_panel_v1';
+    function panelSave() {
+      if (pnl.hidden) return;                                  // trap 1
+      var r = pnl.getBoundingClientRect();
+      if (r.width < 40 || r.height < 20) return;               // nothing real to save
+      try {
+        global.localStorage.setItem(PKEY, JSON.stringify({
+          left: Math.round(r.left), top: Math.round(r.top),
+          w: Math.round(r.width), h: Math.round(r.height),
+        }));
+      } catch (e) {}
+    }
+    function panelRestore() {
+      var v = null;
+      try { v = JSON.parse(global.localStorage.getItem(PKEY) || 'null'); } catch (e) {}
+      if (!v) return;
+      var vw = global.innerWidth, vh = global.innerHeight;
+      var w = clamp(+v.w || 312, 264, Math.round(vw * 0.96));
+      var h = clamp(+v.h || 0, 0, Math.round(vh * 0.88));
+      pnl.style.width = w + 'px';
+      if (h > 96) pnl.style.height = h + 'px';
+      // trap 2: the whole panel inside the viewport where it fits
+      pnl.style.left = clamp(+v.left || 0, 0, Math.max(0, vw - w)) + 'px';
+      pnl.style.top = clamp(+v.top || 0, 0, Math.max(0, vh - Math.min(h || 120, vh - 40))) + 'px';
+      pnl.style.right = 'auto'; pnl.style.bottom = 'auto';
+    }
+    // The resize handle is the browser's, so there is no drag event to hook —
+    // ResizeObserver is how you find out it happened, and it also catches the
+    // window changing under a remembered size.
+    if (typeof global.ResizeObserver !== 'undefined') {
+      var rzT = 0;
+      new global.ResizeObserver(function () {
+        clearTimeout(rzT);
+        rzT = setTimeout(panelSave, 220);        // the drag fires continuously
+      }).observe(pnl);
+    }
+    global.addEventListener('resize', function () {
+      if (!pnl.hidden) panelRestore();           // keep a remembered box on screen
+    });
+
     // drag the header
     var drag = null;
     hd.addEventListener('pointerdown', function (e) {
@@ -720,7 +784,7 @@
       pnl.style.left = clamp(e.clientX - drag.dx, 0, global.innerWidth - pnl.offsetWidth) + 'px';
       pnl.style.top = clamp(e.clientY - drag.dy, 0, global.innerHeight - 44) + 'px';
     });
-    function endDrag() { if (drag) { drag = null; hd.classList.remove('dragging'); } }
+    function endDrag() { if (drag) { drag = null; hd.classList.remove('dragging'); panelSave(); } }
     hd.addEventListener('pointerup', endDrag);
     hd.addEventListener('pointercancel', endDrag);
 
