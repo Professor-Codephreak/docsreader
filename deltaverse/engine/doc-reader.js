@@ -57,6 +57,14 @@
     '.dv-reader:hover{background:rgba(var(--cy,34,211,238),.15);border-color:rgb(var(--cy,34,211,238));',
     '  box-shadow:0 0 18px rgba(var(--cy,34,211,238),.25)}',
     '.dv-reader.on{background:rgb(var(--cy,34,211,238));color:#04040a;border-color:rgb(var(--cy,34,211,238))}',
+    // READING = STOP, IN RED. A button that says LISTEN while it is already
+    // reading is offering something you have; the only thing you want from it
+    // then is the way out. Red because stop is the one control here with a
+    // consequence, and it should not be the same colour as everything else.
+    '.dv-reader.reading{background:rgba(248,81,73,.12);color:#ff6b64;border-color:rgba(248,81,73,.72)}',
+    '.dv-reader.reading:hover{background:rgba(248,81,73,.22);border-color:#ff6b64;',
+    '  box-shadow:0 0 18px rgba(248,81,73,.30)}',
+    '.dv-reader.reading .i{color:#ff6b64}',
     '.dv-reader .i{font-size:10px;line-height:1}',
     '.dv-reader:focus-visible{outline:2px solid rgb(var(--cy,34,211,238));outline-offset:3px}',
     // DRAGGABLE AND RESIZEABLE. `resize` needs a non-visible overflow to work at
@@ -97,6 +105,15 @@
     // the open popup was not, so it fell back to the platform default — a white
     // list rendering near-white inherited text, and the voice names disappeared
     // at the moment you were choosing between them. Both halves must be stated.
+    // THE CHOOSER WAS A BARE SELECT IN A ROW OF CONTROLS and read as a
+    // settings field rather than as the thing the panel is for. It is labelled,
+    // given the full width, and made the tallest control here, because choosing
+    // the voice IS the feature on a page about the voices.
+    '.dvr-voicerow{gap:8px}',
+    '.dvr-vlabel{font-size:9px;letter-spacing:.18em;color:rgba(255,255,255,.45);flex:0 0 auto}',
+    '.dv-reader-panel .dvr-voicerow select{font-size:13px;padding:8px 9px;font-weight:600;',
+    '  border-color:rgba(var(--am,255,176,84),.42);color:#fff;cursor:pointer}',
+    '.dv-reader-panel .dvr-voicerow select:hover{border-color:rgba(var(--am,255,176,84),.75)}',
     '.dv-reader-panel select option,.dv-reader-panel select optgroup{',
     '  background:#0b0f1a;color:#e6edf3}',
     '.dv-reader-panel select option:checked{background:#14304a;color:#fff}',
@@ -274,7 +291,10 @@
       '<button type="button" data-a="stop" title="stop and return to the top">&#9632;</button>' +
       '<a class="dvr-dl" data-a="dl" aria-disabled="true" title="download the audio">&#8615;</a>' +
       '<span class="dvr-count"></span></div>' +
-      '<div class="dvr-row"><select data-a="voice" title="voice"></select></div>' +
+      '<div class="dvr-row dvr-voicerow">' +
+      '<span class="dvr-vlabel">VOICE</span>' +
+      '<select data-a="voice" title="choose the voice — the reading continues from where it is"></select>' +
+      '</div>' +
       '<div class="dvr-row"><span style="font-size:9.5px;letter-spacing:.14em;color:rgba(255,255,255,.4)">RATE</span>' +
       '<input type="range" data-a="rate" min="0.6" max="1.6" step="0.02"></div>' +
       '<details class="dvr-deck"><summary>AUDIO DECK</summary>' +
@@ -381,6 +401,14 @@
       var b = part.from;
       for (var k = 0; k < part.marks.length; k++) if (part.marks[k].at <= t) b = part.marks[k].block; else break;
       if (b !== bi) { bi = b; light(blocks[bi]); }
+      // THE THREE-WORD VIEW IN FILE MODE.
+      // A rendered file carries no word boundaries — only the second each BLOCK
+      // begins, which is measured. So the block is exact and the position inside
+      // it is interpolated by weight (a word's length plus a bonus for the
+      // punctuation after it, which is what actually takes the time). The strip
+      // was simply frozen here before, because it only ever listened to an event
+      // that file playback does not produce.
+      threeFromClock(b, t, part);
       var elapsed = partBefore(pi) + t;
       line.style.width = (A.seconds ? clamp(elapsed / A.seconds, 0, 1) * 100 : 0).toFixed(2) + '%';
       count.textContent = (bi + 1) + ' / ' + blocks.length;
@@ -446,6 +474,26 @@
     function sentBefore(n) {                     // how many sentences precede block n
       var s = 0; for (var k = 0; k < n && k < blocks.length; k++) s += blocks[k].sentences.length; return s;
     }
+    // THE BUTTON HAS ONE JOB AND ONE PLACE THAT DECIDES IT. It was being
+    // written from four different points in this file, which is how a button
+    // ends up disagreeing with the thing it controls.
+    function paintBtn() {
+      if (btn.dataset.mute) {
+        btn.classList.remove('reading');
+        btn.innerHTML = '<span class="i">&#9654;</span>LISTEN &mdash; no voice installed';
+        return;
+      }
+      if (playing) {
+        btn.classList.add('reading');
+        btn.innerHTML = '<span class="i">&#9632;</span>STOP';
+        btn.title = 'stop reading';
+      } else {
+        btn.classList.remove('reading');
+        btn.innerHTML = '<span class="i">&#9654;</span>LISTEN';
+        btn.title = 'Open the player and read this page aloud';
+      }
+    }
+
     function light(b) {
       unlight();
       if (!b) return;
@@ -465,6 +513,49 @@
     // page, so it can never disagree with it — there is one source of truth for
     // "which word is being said" and both surfaces read it.
     var threeEl = null;
+    // Where the block starts and ends inside this part, from the marks — both
+    // measured, so the interpolation is bounded by one block and cannot drift
+    // across the document.
+    function blockSpan(part, block) {
+      var from = null, to = null;
+      for (var k = 0; k < part.marks.length; k++) {
+        if (part.marks[k].block === block && from === null) from = part.marks[k].at;
+        if (from !== null && part.marks[k].block > block) { to = part.marks[k].at; break; }
+      }
+      if (from === null) return null;
+      if (to === null) to = from + (part.seconds || 0) - from;
+      return [from, Math.max(to, from + 0.2)];
+    }
+    var lastThree = '';
+    function threeFromClock(block, t, part) {
+      var b = blocks[block];
+      if (!b) return;
+      var span = blockSpan(part, block);
+      if (!span) return;
+      // LIGHT IT AS IT IS SAID, NOT AFTER IT HAS BEEN.
+      //
+      // timeupdate fires about four times a second, so on average the clock is
+      // an eighth of a second stale before the marker moves — and a reader
+      // watching the word follows the VOICE, so a marker that is consistently
+      // behind reads as the page lagging rather than as sampling. The lead is
+      // the half-interval plus the time it takes to notice a change (~90 ms),
+      // which lands the highlight on the word as the syllable starts instead of
+      // as it finishes.
+      var LEAD = 0.22;
+      var f = clamp((t + LEAD - span[0]) / (span[1] - span[0]), 0, 1);
+      var ws = b.text.split(/\s+/).filter(Boolean);
+      if (!ws.length) return;
+      // weight, not count: "the" and "extraordinarily" do not take the same time
+      var w = ws.map(function (x) { return x.length + (/[.,;:!?—]$/.test(x) ? 5 : 0); });
+      var tot = 0, i; for (i = 0; i < w.length; i++) tot += w[i];
+      var want = f * tot, run = 0, k = 0;
+      for (i = 0; i < w.length; i++) { if (run + w[i] > want) { k = i; break; } run += w[i]; k = i; }
+      var sig = block + ':' + k;
+      if (sig === lastThree) return;                 // do not repaint 4x a second
+      lastThree = sig;
+      three(ws[k - 1] || '', ws[k] || '', ws[k + 1] || '');
+    }
+
     function three(prev, cur, next) {
       if (!threeEl) threeEl = pnl.querySelector('[data-a="three"]');
       if (!threeEl) return;
@@ -482,7 +573,7 @@
       return [before.length ? before[before.length - 1] : '', after.length ? after[0] : ''];
     }
     // the current word, marked in place — from the synthesiser's own boundary events
-    function markWord(node, sentence, charIndex, len) {
+    function markWord(node, sentence, charIndex, len, sentenceAt) {
       clearWord();
       if (!node || charIndex == null) return;
       var word = sentence.slice(charIndex, charIndex + (len || 0));
@@ -495,18 +586,31 @@
       three(nb[0], word || sentence.slice(charIndex).split(/\s/)[0] || '', nb[1]);
       if (word.length < 2) return;
       try {
+        // The block's rendered text and its innerText differ in whitespace, so an
+        // absolute index cannot be used raw. Walk the text nodes accumulating
+        // NORMALISED length and stop at the node containing the target offset —
+        // then search within that node only, which is short enough that the
+        // first match in it is the right one.
+        var want = (sentenceAt == null ? -1 : sentenceAt + charIndex);
         var walker = doc.createTreeWalker(node, global.NodeFilter.SHOW_TEXT, null);
-        var t;
+        var t, run = 0, best = null, bestAt = -1;
         while ((t = walker.nextNode())) {
-          var at = t.nodeValue.indexOf(word);
-          if (at < 0) continue;
-          var rng = doc.createRange();
-          rng.setStart(t, at); rng.setEnd(t, at + word.length);
-          var s = el('span', 'dv-word');
-          rng.surroundContents(s);
-          wordSpan = s;
-          return;
+          var v = t.nodeValue || '';
+          var at = v.indexOf(word);
+          if (at >= 0) {
+            // the first match at or after the offset we are looking for wins;
+            // if we never reach it, the last match before it is the fallback
+            if (want < 0 || run + at >= want - 2) { best = t; bestAt = at; break; }
+            if (!best) { best = t; bestAt = at; }
+          }
+          run += v.replace(/\s+/g, ' ').length;
         }
+        if (!best) return;
+        var rng = doc.createRange();
+        rng.setStart(best, bestAt); rng.setEnd(best, bestAt + word.length);
+        var sp = el('span', 'dv-word');
+        rng.surroundContents(sp);
+        wordSpan = sp;
       } catch (e) { wordSpan = null; }
     }
     function clearWord() {
@@ -577,13 +681,25 @@
         if (bi >= blocks.length) { finish(); return; }
         b = blocks[bi];
       }
-      if (si === 0) light(b);
+      if (si === 0) { light(b); b._at = 0; }
       var text = b.sentences[si];
+      // WHERE THIS SENTENCE SITS IN THE BLOCK.
+      // markWord used to find the word with indexOf on the block, which returns
+      // the FIRST occurrence — so in "the voice is the reference the voice is
+      // not edited" every "the" lit the first one and the highlight sat still
+      // while the reading moved on. It looked sloppy because it WAS: the finger
+      // was pointing at a different instance of the right word.
+      // The search now starts from a cursor that advances sentence by sentence,
+      // so the occurrence lit is the occurrence being said.
+      var sAt = b.text.indexOf(text, b._at || 0);
+      if (sAt < 0) sAt = b.text.indexOf(text);          // punctuation restored differently
+      if (sAt < 0) sAt = b._at || 0;
+      b._at = sAt + text.length;
       var u = DVVoices.utter(text, { voice: state.voice, rate: state.rate });
       cur = u;
       u.onboundary = function (e) {
         if (e.name && e.name !== 'word') return;
-        markWord(b.node, text, e.charIndex, e.charLength);
+        markWord(b.node, text, e.charIndex, e.charLength, sAt);
       };
       u.onend = function () { if (cur !== u) return; step(); };
       u.onerror = function () { if (cur !== u) return; step(); };
@@ -597,6 +713,10 @@
       if (playing) return;
       playing = true; pnl.classList.add('playing');
       playB.innerHTML = '&#10073;&#10073;'; playB.title = 'pause';
+      // the LISTEN button is repainted from stop() and pause() but was never
+      // repainted from HERE, so it sat on LISTEN through the entire reading —
+      // the one state it exists to tell you about
+      paintBtn();
       if (fileMode()) {
         if (!au.src) loadPart(pi, true); else au.play().catch(function () { fallToLive('playback was refused'); });
         progress(); return;
@@ -611,7 +731,7 @@
       if (fileMode()) { try { au.pause(); } catch (e) {} progress(); return; }
       guard(false);
       try { synth.pause(); } catch (e) {}
-      progress();
+      progress(); paintBtn();
     }
     function stop() {
       playing = false; pnl.classList.remove('playing');
@@ -620,7 +740,7 @@
       guard(false);
       cur = null;
       try { synth.cancel(); } catch (e) {}
-      unlight(); progress();
+      unlight(); progress(); paintBtn();
     }
     function jumpTo(n, andPlay) {
       var was = playing;
@@ -662,8 +782,17 @@
       return open;
     }
     btn.addEventListener('click', function () {
-      var wasOpen = !pnl.hidden;
-      openPanel(!wasOpen);
+      // READING? THEN THIS IS STOP. The button says STOP, so it must stop —
+      // not open the panel again, which is what it did when its only job was
+      // to be a LISTEN button.
+      if (playing) { stop(); return; }
+      // LISTEN READS. That is the whole contract, and it used to be conditional:
+      // the panel was TOGGLED and playback started only if the panel had been
+      // shut. So if anything had already opened it — autostart, a previous
+      // press, a restored layout — pressing LISTEN closed the panel instead of
+      // reading, which is the opposite of what the word says. Closing is the ×
+      // button's job. LISTEN opens if needed and always begins.
+      openPanel(true);
       if (btn.dataset.mute) {                          // the player opens, and states the difficulty
         title.textContent = 'no voice on this platform';
         meta.innerHTML = '<span class="dvr-lock">&#9679; this browser exposes a speech synthesiser but ' +
@@ -673,7 +802,7 @@
           '<br>The playlist below is what would be read.';
         return;
       }
-      if (!wasOpen && !playing) play();               // one gesture: open AND read
+      if (!playing) play();                            // one gesture: open AND read
     });
 
     pnl.addEventListener('click', function (e) {
@@ -687,20 +816,61 @@
       else if (a === 'shade') { pnl.classList.toggle('shaded'); b.innerHTML = pnl.classList.contains('shaded') ? '&#9633;' : '&#9472;'; }
       else if (a === 'close') openPanel(false);
     });
+    // CHANGING VOICE CONTINUES FROM WHERE YOU WERE, TO THE SECOND.
+    //
+    // This used to keep the BLOCK and start it again from its beginning, which
+    // is right to within a paragraph and wrong to within about twenty seconds —
+    // long enough that you hear a sentence you have already heard and conclude
+    // the thing restarted. The position is now carried as a FRACTION of the
+    // whole, because the voices differ in pace: the same reading is 348 s in
+    // neural and 582 s in OVERLORD, so a timestamp does not survive the
+    // crossing, and 41% of the way through does.
+    //
+    // The old audio also keeps playing until the new manifest is in hand. That
+    // lookup is a static file here and usually takes milliseconds, but on a slow
+    // connection it is the difference between a seamless change and a gap, and
+    // there is no reason to pay it.
+    function elapsedFraction() {
+      if (fileMode() && A && A.seconds) {
+        return clamp((partBefore(pi) + (au ? au.currentTime || 0 : 0)) / A.seconds, 0, 1);
+      }
+      return blocks.length ? clamp(bi / blocks.length, 0, 1) : 0;
+    }
+    function resumeAtFraction(f, andPlay) {
+      if (fileMode() && A && A.seconds) {
+        var want = f * A.seconds, run = 0;
+        for (var k = 0; k < A.parts.length; k++) {
+          var d = A.parts[k].seconds || 0;
+          if (run + d > want || k === A.parts.length - 1) {
+            var off = want - run;
+            var go = function () {
+              try { au.currentTime = Math.max(0, Math.min(off, (au.duration || d) - 0.25)); } catch (e) {}
+              if (andPlay) { playing = false; play(); }
+            };
+            if (k !== pi || !au || !au.src) loadPart(k, false).then(go); else go();
+            return;
+          }
+          run += d;
+        }
+      }
+      // live synthesis has no clock, so the fraction lands on a block
+      bi = clamp(Math.floor(f * blocks.length), 0, blocks.length - 1);
+      si = 0;
+      if (andPlay) { playing = false; play(); } else progress();
+    }
     sel.addEventListener('change', function () {
       state.voice = sel.value; save(); describe();
-      var b = bi, was = playing;
-      stop();
+      var was = playing, f = elapsedFraction();
+      // do NOT stop yet — the current voice keeps reading through the lookup
       lookForAudio().then(function () {
         if (fileMode() || DVVoices.usable()) {
           delete btn.dataset.mute;
-          btn.innerHTML = '<span class="i">&#9654;</span>LISTEN';
         } else {
           btn.dataset.mute = '1';
-          btn.innerHTML = '<span class="i">&#9654;</span>LISTEN &mdash; no voice installed';
         }
-        bi = b;
-        if (was) { playing = false; jumpTo(b, true); } else progress();
+        stop();
+        resumeAtFraction(f, was);
+        paintBtn();
       });
     });
     rate.addEventListener('input', function () {
@@ -809,6 +979,7 @@
       fillVoices();
       if (fileMode()) {
         btn.title = 'Open the player — this page is rendered, so it starts instantly and can be downloaded';
+        if (opts.autostart) autostart();
         return;
       }
       if (!DVVoices.usable()) {
@@ -911,6 +1082,75 @@
           'also here as a plain control — nothing is missing but the knobs.';
       }
     }, 4000);
+
+    // ── AUTOSTART, WITH A BUFFER AND WITHOUT PRETENDING ──────────────────
+    //
+    // TWO HONEST CONSTRAINTS, BOTH HANDLED RATHER THAN HOPED PAST.
+    //
+    // 1. A browser will not start audio without a user gesture. Chrome makes an
+    //    exception once you have a history of playing media on the site, so this
+    //    WILL start for a returning reader and WILL NOT on a first visit — and
+    //    which of those you get is not knowable in advance. So it is attempted,
+    //    and a refusal is not treated as a failure: the panel is left open,
+    //    buffered, and one press from reading, with the button saying so. What it
+    //    must never do is sit on a play glyph having been refused.
+    //
+    // 2. Starting the instant the first byte lands gives you a sentence and then
+    //    a stall. So it waits for a BUFFER — enough decoded audio that the read
+    //    survives a slow moment — and the wait has a deadline, because a reader
+    //    on a poor connection would rather start late than not at all.
+    var AUTOSTART_BUFFER = 6;        // seconds of audio ahead before starting
+    var AUTOSTART_DEADLINE = 9000;   // ms after which we start with what we have
+    function autostart() {
+      // an explicit opt-out, because a page that talks at you unbidden should
+      // always have a way to be told not to
+      try {
+        if (new global.URLSearchParams(global.location.search).get('autoplay') === '0') return;
+      } catch (e) {}
+      if (!A || !A.parts || !A.parts.length) return;
+      ensureAudio();
+      if (!au) return;
+      au.preload = 'auto';
+      openPanel(true);
+      var started = false, t0 = Date.now();
+      function buffered() {
+        try {
+          if (!au.buffered || !au.buffered.length) return 0;
+          return au.buffered.end(au.buffered.length - 1) - (au.currentTime || 0);
+        } catch (e) { return 0; }
+      }
+      function go() {
+        if (started) return;
+        started = true;
+        clearInterval(iv);
+        playing = false;                       // play() returns early if it is already true
+        play();
+        // play() calls au.play() and swallows nothing — but the promise is where
+        // a refusal shows up, and this is the one place that needs to know.
+        try {
+          var pr = au.play();
+          if (pr && pr.then) {
+            pr.then(function () { paintBtn(); }).catch(function () {
+              // REFUSED. Not an error, and not something to hide: the audio is
+              // ready and one press away, so say exactly that.
+              playing = false;
+              pnl.classList.remove('playing');
+              playB.innerHTML = '&#9654;'; playB.title = 'play';
+              paintBtn();
+              modeEl.textContent = 'ready — press play';
+              modeEl.title = 'This browser will not start audio on its own until you have ' +
+                'interacted with the page. The reading is loaded and buffered; press play.';
+            });
+          }
+        } catch (e) {}
+      }
+      var iv = setInterval(function () {
+        if (buffered() >= AUTOSTART_BUFFER || au.readyState >= 4 ||
+            Date.now() - t0 > AUTOSTART_DEADLINE) go();
+      }, 250);
+      // load the first part without playing it, so there is something to buffer
+      loadPart(0, false);
+    }
 
     function lookForAudio() {
       if (!global.DVDocAudio) { adoptManifest(null); return Promise.resolve(); }

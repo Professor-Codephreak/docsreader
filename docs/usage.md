@@ -89,15 +89,33 @@ the second each block begins, so the highlight is measured rather than estimated
 the prose and the old marks point at the wrong lines. `blocks.py` prints a
 checksum for exactly this reason.
 
+## Pre-rendering, and why the order matters
+
+    python3 scripts/warm_docspeech.py MANIFESTO.md
+    python3 scripts/warm_docspeech.py MANIFESTO.md --only classic,zen
+
+Renders every face — alternates included, since CLASSIC is four machines behind one
+button — **slowest first**. One document builds at a time (deliberately: two vCPUs), so
+everything queues behind whatever is running. Warming the quick ones first just means the
+quick ones finish and then you wait anyway.
+
+It doubles as the diagnostic: it asks for every face in turn and prints what came back,
+which is how half the cast was found returning HTTP 500 while looking merely slow.
+
 ## The voices
 
 | voice | what it is | f0 |
 |---|---|---|
-| `neural` | the reference. Default everywhere, never edited. | 94.6 Hz |
-| `jaimla` | the female voice. Saved in her own right, not a ratio. | 183.8 Hz |
-| `overlord` | LEADER's mass, ANCIENT's absolutes, an octave under it. | 81.1 Hz |
-| `ovie` | neural ×1.08 rate, ×1.08 pitch. | 102.2 Hz |
-| `participant` | neural ×1.00 — neural under a second name. | 94.6 Hz |
+| `neural` | the reference. Default everywhere, never edited, carries no rate or pitch. | ~95–101 Hz |
+| `jaimla` | the female voice — female in the weights, not by a multiplier. | 184 Hz |
+| `leader` | the reference, deepened and slowed, **shaped by EQ** rather than mixed with another voice. | 89 Hz |
+| `overlord` | neural and jaimla **in unison** — two voices, aligned per sentence. | — |
+| `classic` | four machines on one button: H.A.L · K.I.T.T · T1000 · FAIRYDUST. | 114 / 151 / 90 Hz |
+| `ancient` | a whisper at speaking volume: folds closed, breath wide on top. | 89 Hz |
+| `voicebox` | a 1990s speaking machine with a world accent. | 128 Hz |
+| `zen` | one English from the Englishes of East Asia, syllable-timed. | 118 Hz |
+| `sam`, `sagi` | the Scottish fourth, and the northern neural voice. | — |
+| `ovie`, `participant` | stated ratios on neural. | — |
 
 The espeak voices under `voices/espeak-ng/` need installing before the tuned cast
 will speak; `voices/install_voices.sh` does it and then **proves** it worked by

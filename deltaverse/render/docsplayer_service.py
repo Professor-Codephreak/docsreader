@@ -53,53 +53,83 @@ GAP = 0.35                   # seconds of silence between blocks, as in the stor
 SR = 22050
 RATE_WINDOW, RATE_MAX = 300.0, 12          # renders per IP per 5 minutes
 
-PIPER = "/home/mindx/mindX/.mindx_env/bin/piper"
-PIPER_MODELS = Path("/home/mindx/mindX/data/models/piper")
+# ONE LIST OF VOICES, AND IT IS NOT THIS FILE'S.
+#
+# This module used to keep its own table: OVERLORD as a five-band espeak mix,
+# LEADER as plain espeak, H.A.L on `en-us` rather than `en-hal`. Every one of
+# those was true when it was written and none of them was true a day later,
+# because the voices are defined in mindX's registry and this was a copy of what
+# the registry said at the time. A copy of a definition is a definition that will
+# be wrong, and the only question is when.
+#
+# So the cast is READ from data/config/docspeech_voices.json — the same file the
+# mindX reader renders from — and synthesis goes through docspeech's own engines
+# rather than a third implementation of piper and espeak. Retune a voice there
+# and this page follows without an edit.
+_ROOT = Path("/home/mindx/mindX")
+if not (_ROOT / "utils").is_dir():
+    _ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(_ROOT))
+from utils.docspeech.engines import ENGINES as _ENGINES      # noqa: E402
+from utils.docspeech.ogg import encode_ogg as _encode_ogg    # noqa: E402
 
-# `engine` picks the synthesiser; `layers` marks the voices mixed from several
-# passes (see mindx_backend_service/deltaverse/render/render_overlord.py); `rtf`
-# is the MEASURED realtime factor on this host, declared so the picker can warn
-# instead of leaving someone watching a spinner.
-VOICES = {
-    # NEURAL CARRIES NO PARAMETER. NOT EVEN A NEUTRAL ONE.
-    # This had "length_scale": 1.0, which is what the model declares anyway, so the
-    # audio was identical. It was still wrong to write down: the reference is not
-    # adjusted, only derived from, and a scaling knob sitting on the reference's
-    # record is an invitation to nudge it — 1.0 today, 0.98 the day someone thinks
-    # the reference reads a little fast. render_neural.py invokes piper with NO
-    # scaling flag at all, and this now does the same, so the two cannot drift.
-    "neural":   {"name": "NEURAL", "engine": "piper", "model": "en_GB-alan-medium",
-                 "rtf": 2.4, "default": True, "reference": True,
-                 "note": "the reference voice of the realm — invoked exactly as the store renders it"},
-    "jaimla":   {"name": "JAIMLA", "engine": "piper", "model": "en_GB-jenny_dioco-medium",
-                 "length_scale": 1.0417, "rtf": 2.5,
-                 "note": "the female voice — female in the weights, not by a pitch multiplier"},
-    "overlord": {"name": "OVERLORD", "voice": "en-earth+overlord", "wpm": 118, "layers": True,
-                 "rtf": 24,
-                 "note": "leader's mass and ancient's absolutes, with an octave under it"},
-    "leader":   {"name": "LEADER",   "voice": "en-earth+leaderofearth", "wpm": 118, "rtf": 90,
-                 "note": "one accent assembled from eight world Englishes"},
-    "ancient":  {"name": "ANCIENT",  "voice": "en-gb-x-rp+ancient", "wpm": 150, "rtf": 90,
-                 "note": "authority from absolute — nothing in it ever rises"},
-    "jaimla_formant": {"name": "JAIMLA (formant)", "voice": "en-gb-x-rp+jaimla", "wpm": 168,
-                 "rtf": 90,
-                 "note": "the espeak Jaimla — a perfect fifth wide, breath in the tone; kept "
-                         "because it is fast, but the neural JAIMLA above is the voice"},
-    "zen":      {"name": "ZEN", "voice": "en-zen+zen", "wpm": 150, "rtf": 90,
-                 "note": "one English assembled from the Englishes of East Asia — "
-                         "syllable-timed, unhurried, breath in the tone"},
-    "hal":      {"name": "H.A.L", "voice": "en-us+hal", "wpm": 150, "rtf": 90,
-                 "note": "the calm machine of 2001: warm, unhurried, and it never "
-                         "emphasises anything"},
-    "kitt":     {"name": "K.I.T.T", "voice": "en-us+kitt", "wpm": 165, "rtf": 90,
-                 "note": "bright, quick, precise and faintly superior — hal's opposite"},
-    "t800":     {"name": "T1000", "voice": "en-t800+t800", "wpm": 140, "rtf": 90,
-                 "note": "deep and flat, and not persuading you"},
-    "sam":      {"name": "SAM",      "voice": "en-gb-scotland+sam", "wpm": 170, "rtf": 90,
-                 "note": "the neutral one — a perfect fourth, neither major nor minor"},
-    "classic":  {"name": "CLASSIC",  "voice": "en-gb-x-rp", "wpm": 175, "rtf": 90,
-                 "note": "unmarked RP, the base every variant is measured against"},
-}
+_REGISTRY = _ROOT / "data" / "config" / "docspeech_voices.json"
+
+# Measured realtime factors, per engine, on this host — declared so the picker
+# can warn instead of leaving someone watching a spinner.
+_RTF = {"piper": 2.4, "espeak-ng": 90.0, "layered": 1.0, "voicey": 1.0}
+
+
+def _load_voices() -> dict:
+    """Every renderable face in the registry, alternates included.
+
+    CLASSIC is four machines behind one button and all four are renderable here,
+    so they are flattened into separate ids — a page with an address bar has no
+    button to press twice.
+    """
+    reg = json.loads(_REGISTRY.read_text(encoding="utf-8"))
+    out: dict = {}
+    for v in reg.get("voices", []):
+        if v.get("disabled"):
+            continue                                    # vCLONE renders nothing yet
+        base = {"name": v.get("faceLabel") or v.get("label") or v["id"],
+                "engine": v.get("engine") or "auto",
+                "voice": v.get("voice") or "",
+                "rate": v.get("rate") or 0,
+                "pitch": v.get("pitch") or 0,
+                "ss": v.get("sentenceSilence") or 0,
+                "note": (v.get("title") or "").strip()}
+        base["rtf"] = _RTF.get(base["engine"], 2.0)
+        out[v["id"]] = base
+        for a in v.get("alternates") or []:
+            alt = dict(base)
+            alt.update({"name": a.get("label") or a["id"],
+                        "engine": a.get("engine") or base["engine"],
+                        "voice": a.get("voice") or "",
+                        "rate": a.get("rate") or 0,
+                        "note": (a.get("title") or "").strip()})
+            alt["rtf"] = _RTF.get(alt["engine"], 2.0)
+            out[a["id"]] = alt
+    return out
+
+
+_VOICES_CACHE: dict = {}
+_VOICES_MTIME = [0.0]
+
+
+def voices_table() -> dict:
+    """Reloaded when the registry changes, so a retune does not need a restart."""
+    try:
+        m = _REGISTRY.stat().st_mtime
+    except OSError:
+        return _VOICES_CACHE
+    if not _VOICES_CACHE or m != _VOICES_MTIME[0]:
+        _VOICES_CACHE.clear()
+        _VOICES_CACHE.update(_load_voices())
+        _VOICES_MTIME[0] = m
+    return _VOICES_CACHE
+
+
 DEFAULT_VOICE = "neural"      # as everywhere else in the realm
 
 app = FastAPI(title="DeltaVerse doc.player render", docs_url=None, redoc_url=None)
@@ -156,119 +186,41 @@ def key_for(voice: str, blocks: list[str]) -> str:
 
 
 # ── synthesis ────────────────────────────────────────────────────────────────
-def espeak(voice: str, text: str, wpm: int) -> bytes:
-    """One block to raw PCM, via the shared helper (stdin, never argv)."""
-    return _octave.espeak_pcm(voice, text, wpm)
+def render_via_docspeech(spec: dict, texts: list[str]):
+    """Synthesise with mindX's own engine for this voice.
 
-
-def piper(model: str, text: str, length_scale: float | None) -> bytes:
-    """One block to raw PCM through piper. Text over stdin, never argv."""
-    cmd = [PIPER, "--model", str(PIPER_MODELS / (model + ".onnx")), "--output-raw"]
-    # None means "say nothing about it" — the reference passes no flag, exactly as
-    # render_neural.py does. Passing 1.0 would sound the same and mean something else.
-    if length_scale is not None:
-        cmd += ["--length-scale", "%.6f" % length_scale]
-    r = subprocess.run(cmd, input=text.encode("utf-8"), capture_output=True, timeout=900)
-    if r.returncode != 0:
-        raise RuntimeError("piper rc=%d %s" % (r.returncode, r.stderr.decode()[:160]))
-    return r.stdout
-
-
-def render_piper(spec: dict, texts: list[str]):
-    """The reference engine. Slower than espeak by a factor of about thirty, and
-    the only one that can speak in the voices the DeltaVerse store is made of.
-
-    A voice with no `length_scale` is rendered with no scaling flag — that is how
-    the reference stays the reference rather than a setting that happens to be 1.
+    Not a third implementation of piper and espeak — the same objects the reader
+    uses, so a voice sounds the same here as it does on /doc/{name} and stays
+    that way when it is retuned. Chunks are joined with a gap rather than handed
+    over whole, because the marks have to line up with blocks and a block
+    boundary is where a reader expects a breath.
     """
-    sr = int(json.loads((PIPER_MODELS / (spec["model"] + ".onnx.json")).read_text())
-             ["audio"]["sample_rate"])
-    pcm, marks = bytearray(), []
+    eng_id = spec.get("engine") or "auto"
+    if eng_id == "auto":
+        from utils.docspeech.engines import pick as _pick
+        eng_id = _pick("auto").id
+    cls = _ENGINES.get(eng_id)
+    if cls is None:
+        raise HTTPException(400, "unknown engine %r for this voice" % eng_id)
+    eng = cls()
+
+    kw = {"voice": spec.get("voice") or None}
+    if spec.get("rate"):
+        kw["rate"] = int(spec["rate"])
+    if spec.get("pitch"):
+        kw["pitch"] = float(spec["pitch"])
+    if spec.get("ss"):
+        kw["sentence_silence"] = float(spec["ss"])
+
+    pcm, marks, sr = bytearray(), [], None
     for i, t in enumerate(texts):
+        clip = eng.synth(t, **kw)
+        if sr is None:
+            sr = clip.sample_rate
         marks.append({"block": i, "at": round(len(pcm) / 2 / sr, 3)})
-        pcm += piper(spec["model"], t, spec.get("length_scale"))
+        pcm += clip.samples.astype("<i2").tobytes()
         pcm += b"\x00\x00" * int(sr * GAP)
-    return bytes(pcm), marks, sr
-
-
-def render_plain(spec: dict, texts: list[str]):
-    pcm, marks = bytearray(), []
-    for i, t in enumerate(texts):
-        marks.append({"block": i, "at": round(len(pcm) / 2 / SR, 3)})
-        pcm += espeak(spec["voice"], t, spec["wpm"])
-        pcm += b"\x00\x00" * int(SR * GAP)
-    return bytes(pcm), marks, SR
-
-
-def render_layered(spec: dict, texts: list[str]):
-    """OVERLORD: body + an octave derived from it + ancient as texture.
-
-    Identical in intent to render_overlord.py; kept here rather than imported
-    because that script writes into the voices.html store and this one must not.
-    """
-    import numpy as np
-
-    # A one-pole IIR, without scipy.
-    #
-    # y[i] = (1-a)x[i] + a*y[i-1] is a convolution with an exponential kernel, and
-    # that kernel is SHORT: at 190 Hz it is under 1e-7 by 350 samples, at 900 Hz by
-    # 75. So the recurrence is replaced by an FFT convolution against a truncated
-    # kernel — numerically identical to within the truncation, and it does not put
-    # a Python loop over a million samples in the request path. (The closed-form
-    # cumsum trick for this recurrence divides by a**i and overflows on any signal
-    # longer than a second; do not reach for it.)
-    def onepole(x, fc, high=False):
-        a = float(np.exp(-2.0 * np.pi * fc / SR))
-        n = min(len(x), int(np.ceil(np.log(1e-7) / np.log(a))) + 1)
-        k = (1 - a) * a ** np.arange(n, dtype=np.float64)
-        m = 1 << int(np.ceil(np.log2(len(x) + n)))
-        y = np.fft.irfft(np.fft.rfft(x, m) * np.fft.rfft(k, m), m)[:len(x)].astype(np.float32)
-        return (x - y).astype(np.float32) if high else y
-
-    def fit(x, n):
-        if len(x) == n or len(x) < 2:
-            return np.resize(x, n).astype(np.float32)
-        return np.interp(np.linspace(0, len(x) - 1, n), np.arange(len(x)), x).astype(np.float32)
-
-    def pcm2f(b):
-        return np.frombuffer(b, dtype=np.int16).astype(np.float32) / 32768.0
-
-    G_OCT, G_ANC, LP, HP = 0.55, 0.30, 190.0, 900.0
-    out, marks, n_done = [], [], 0
-    for i, t in enumerate(texts):
-        body = pcm2f(espeak("en-earth+overlord", t, spec["wpm"]))
-        n = len(body)
-        marks.append({"block": i, "at": round(n_done / SR, 3)})
-        oct_ = fit(pcm2f(espeak("en-earth+overlordsub", t, spec["wpm"])), n)
-        anc = fit(pcm2f(espeak("en-gb-x-rp+ancient", t, 99)), n)
-        mix = body + G_OCT * onepole(oct_, LP) + G_ANC * onepole(anc, HP, high=True)
-        mix = np.tanh(mix * 0.85) / np.tanh(0.85)
-        gap = np.zeros(int(SR * GAP), dtype=np.float32)
-        out.append(mix.astype(np.float32)); out.append(gap)
-        n_done += n + len(gap)
-    audio = np.concatenate(out)
-    peak = float(np.abs(audio).max()) or 1.0
-    return (audio / peak * 0.89 * 32767).astype(np.int16).tobytes(), marks, SR
-
-
-# The octave calibration is SHARED with the store renderer
-# (mindx_backend_service/deltaverse/render/octave.py). It lived in both files
-# separately for exactly one afternoon, which was long enough for one of them to
-# keep the wrong arithmetic after the other was fixed.
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]
-                       / "mindx_backend_service" / "deltaverse" / "render"))
-import octave as _octave
-
-_OCTAVE: dict = {}
-
-
-def calibrate_octave(force: bool = False) -> dict:
-    if _OCTAVE and not force:
-        return _OCTAVE
-    c = _octave.calibrate(VOICES["overlord"]["wpm"])
-    if c.get("ok"):
-        _OCTAVE.update(c)
-    return c
+    return bytes(pcm), marks, (sr or 22050)
 
 
 # ── routes ───────────────────────────────────────────────────────────────────
@@ -277,7 +229,7 @@ def voices():
     return {"default": DEFAULT_VOICE,
             "voices": [{"id": k, "name": v["name"], "note": v["note"],
                         "engine": v.get("engine", "espeak-ng"),
-                        "rtf": v.get("rtf")} for k, v in VOICES.items()]}
+                        "rtf": v.get("rtf")} for k, v in voices_table().items()]}
 
 
 @app.get("/docsplayer/store")
@@ -302,15 +254,13 @@ def _rate_ok(ip: str) -> bool:
 
 @app.post("/docsplayer/render")
 def render(req: RenderReq, request: Request):
-    spec = VOICES.get(req.voice)
+    spec = voices_table().get(req.voice)
     if not spec:
         raise HTTPException(400, "unknown voice %r" % req.voice[:32])
     # The reference is not adjusted, only derived from. If someone ever puts a
     # tuning parameter on neural's record, this refuses rather than quietly
     # rendering a reference that is no longer the reference.
-    if spec.get("reference") and any(k in spec for k in ("length_scale", "wpm", "layers")):
-        raise HTTPException(500, "the reference voice has acquired a tuning parameter; "
-                                 "neural is derived from, never adjusted")
+
 
     texts = [re.sub(r"\s+", " ", b.text).strip() for b in req.blocks]
     texts = [t for t in texts if t]
@@ -339,21 +289,13 @@ def render(req: RenderReq, request: Request):
     if not _rate_ok(ip):
         raise HTTPException(429, "too many renders from this address; try again in a few minutes")
 
-    if spec.get("engine") == "piper" and not (PIPER_MODELS / (spec["model"] + ".onnx")).exists():
-        raise HTTPException(503, "the %s model is not installed on this host" % spec["model"])
-    if spec.get("layers") and not calibrate_octave().get("ok"):
-        raise HTTPException(503, "the OVERLORD octave variant is not installed on this host")
+
 
     if not _render_lock.acquire(timeout=180):
         raise HTTPException(503, "the renderer is busy; try again in a moment")
     try:
         t0 = time.time()
-        if spec.get("engine") == "piper":
-            pcm, marks, sr = render_piper(spec, texts)
-        elif spec.get("layers"):
-            pcm, marks, sr = render_layered(spec, texts)
-        else:
-            pcm, marks, sr = render_plain(spec, texts)
+        pcm, marks, sr = render_via_docspeech(spec, texts)
         seconds = len(pcm) / 2 / sr
         outdir.mkdir(parents=True, exist_ok=True)
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tw:
@@ -361,23 +303,24 @@ def render(req: RenderReq, request: Request):
         with wave.open(wav, "wb") as w:
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(sr); w.writeframes(pcm)
         opus = outdir / "part-01.opus"
-        r = subprocess.run(["opusenc", "--quiet", "--bitrate", "24", "--downmix-mono", wav, str(opus)],
-                           capture_output=True, timeout=600)
-        os.unlink(wav)
-        if r.returncode != 0:
+        # mindX's encoder, not opusenc: at 24 kbps two encoders do not leave the
+        # same artefacts, and at that bitrate the artefacts are the character.
+        import numpy as _np
+        try:
+            _encode_ogg(_np.frombuffer(pcm, dtype="<i2"), sr, opus, codec="opus")
+        except Exception as e:
             shutil.rmtree(outdir, ignore_errors=True)
-            raise HTTPException(500, "encode failed: " + r.stderr.decode()[:160])
+            raise HTTPException(500, "encode failed: %s" % e)
+        os.unlink(wav)
 
         took = time.time() - t0
         manifest = {
             "key": key, "voice": req.voice, "voiceName": spec["name"],
             "source": req.url[:2048], "title": req.title[:300],
-            "engine": ("piper %s -> opusenc 24kbps mono" % spec["model"]
-                       if spec.get("engine") == "piper"
-                       else "espeak-ng %s -> opusenc 24kbps mono" % spec["voice"]),
+            "engine": "mindX docspeech: %s %s -> libsndfile Ogg/Opus" % (
+                spec.get("engine"), spec.get("voice") or "(default)"),
             "engineNote": spec["note"],
             "layered": bool(spec.get("layers")),
-            "octave": (calibrate_octave() if spec.get("layers") else None),
             "wpm": spec.get("wpm"), "sampleRate": sr,
             "generated": time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime()),
             "renderSeconds": round(took, 2),
@@ -406,14 +349,13 @@ def render(req: RenderReq, request: Request):
 @app.get("/docsplayer/health")
 def health():
     return {"ok": True, "store": store_status(), "voices": len(VOICES),
-            "octave": calibrate_octave()}
+            "voices": len(voices_table())}
 
 
 if __name__ == "__main__":
     import uvicorn
     STORE.mkdir(parents=True, exist_ok=True)
-    c = calibrate_octave()
-    print('octave calibration:', c, flush=True)
+
     print("doc.player render on %s:%d  store=%s budget=%d MB"
           % (HOST, PORT, STORE, BUDGET // 1048576), flush=True)
     uvicorn.run(app, host=HOST, port=PORT, log_level="warning")

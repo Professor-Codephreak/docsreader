@@ -24,7 +24,7 @@
       {
        "id": "kitt",
        "label": "K.I.T.T",
-       "title": "press CLASSIC again \u2014 the car from Knight Rider: bright, quick, precise, faintly superior",
+       "title": "K.I.T.T — the voice of the car from the Knight Rider television show",
        "voice": "en-kitt+kitt",
        "rate": 160,
        "note": "hal's counterpart and deliberately its opposite everywhere hal commits. hal is warm, slow and leans on nothing; this is forward, quick and leans on quite a lot. Same en-us base so the two read as one character's two moods rather than two accents. The peak moves from 700 Hz (chest, in the room with you) to 1500 Hz (mouth, out of a dashboard)."
@@ -32,7 +32,7 @@
       {
        "id": "t800",
        "label": "T1000",
-       "title": "press CLASSIC a third time \u2014 the machine from the future: deep, flat, and not persuading you",
+       "title": "T1000 — the Terminator 2 voice",
        "voice": "en-t800+t800",
        "rate": 138,
        "note": "The third face, and the one with no warmth in it. hal is warm and never emphasises; kitt is bright and emphasises constantly; this is neither, because it is not reassuring or helping, it is stating. Accent in voices/en-t800: w->v and th->z/d, the two features anyone can hear. Final-obstruent devoicing was deliberately NOT taken \u2014 it is characteristic and it turns 'bad' into 'bat', and a voice that cannot be trusted to say the word is not usable as a reading voice however good the impression. Measured f0 95.5 Hz against hal's 118.9 and kitt's 170.3."
@@ -40,14 +40,14 @@
       {
        "id": "fairydust",
        "label": "FAIRYDUST",
-       "title": "press CLASSIC a fourth time — high, soft and weightless, from the jaimla template",
+       "title": "FAIRYDUST — high, soft and weightless, from the Jaimla template",
        "voice": "en-gb-x-rp+fairydust",
        "rate": 168,
        "note": "Taken from the jaimla template and lifted an octave: same base, same interval (a perfect fifth, 3:2 — keeping the RATIO rather than the span is what makes it read as the same voice grown light rather than a different one squeaking). voicing 44 against jaimla's 62 with breath wider still, so less than half the signal is fold vibration and the rest is moving air — soft at any volume, because there is very little there to be loud with. The 4.2 kHz lift is where breath turns to sparkle. The only voice in the cast with no authority in it whatsoever, which is the point of putting it at the end of a row of machines that have nothing else."
       }
      ],
       "label": "CLASSIC",
-      "title": "CLASSIC \u2014 the calm machine of 2001: soft, unhurried, impeccably polite",
+      "title": "CLASSIC — H.A.L, the voice of HAL 9000 from 2001: A Space Odyssey",
       "engine": "espeak-ng",
       "voice": "en-hal+hal",
       "rate": 132,
@@ -61,16 +61,27 @@
       "id": "leaderofearth",
       "label": "LEADER",
       "title": "leaderofearth — one accent assembled from eight world Englishes (royal, US, Australian, Indian, Mexican, Brazilian, Brooklyn, Slavic); deepest and slowest voice in the set",
-      "engine": "piper",
-      "voice": "en_GB-alan-medium",
+      "engine": "layered",
+      "voice": "leader",
+     "layers": [
+      {"role": "body", "engine": "piper", "voice": "en_GB-alan-medium",
+       "speed": 0.92, "pitch": 0.88, "gain": 1.0,
+       "why": "the reference, lower and unhurried — and the ONLY voice here"}
+     ],
+     "eq": [
+      [60, 170, 2.5],
+      [260, 520, -3.5],
+      [1900, 4200, 4.0],
+      [5200, 11000, -2.0]
+     ],
+     "_eq": "A BROADCAST DESK, NOT A SECOND SPEAKER. piper gives a length-scale and nothing else, so a derived voice can only be faster, slower, higher or lower — enough to be DIFFERENT, not enough to be AUTHORITATIVE, which is why the first LEADER reached for another voice to supply the character. A second voice is not character, it is company. These four bands are what a desk does to a presenter instead: +2.5 dB of chest under 170 Hz; -3.5 dB at 260-520 Hz, which is the mud that makes a low voice sound heavy rather than deep and is the single most important cut here; +4 dB across 1.9-4.2 kHz, where consonants are told apart, so the words land without the voice getting louder; and -2 dB above 5.2 kHz to keep sibilance off a voice that is now brighter in the mids. One speaker, shaped.",
+     "sentenceSilence": 0.85,
       "tier": "participant",
       "accent": "Earth — one accent assembled from royal, US, Australian, Indian, Mexican, Brazilian, Brooklyn and Slavic English, on a Caribbean base",
       "gender": "male",
-      "rate": 150,
-     "pitch": 0.92,
      "sentenceSilence": 0.85,
       "measured": "f0 117.9 Hz · centroid 1484 · presence 2-5 kHz 23.7% — the deepest voice in the set, and no longer the darkest: presence was 12.4% before the retune",
-      "note": "LEADER IS NOW NEURAL, SLOWED AND DEEPENED — not a formant voice at all. It was en-earth+leaderofearth, an espeak variant on an eight-accent composite, and it read at 10.3% WER against classic's 2.6%. It is now the reference model itself (en_GB-alan-medium) at rate 150 (about 0.86x speed) with pitch 0.92, which piper reaches without having a pitch control: length_scale = P/S and the stream declared at SR x P, so duration and pitch move independently. It inherits neural's clarity exactly, because it IS neural. sentenceSilence 0.85 s is the aura of the obvious — a pause after every conclusion, STATED rather than inherited from the speaking rate, because a voice whose character is the beat after the sentence should not have to be slow to get one. The espeak variant stays installed as en-earth+leaderofearth for anyone who wants it."
+      "note": "A LEADER IS ONE VOICE, and it is a SHAPED one. It was the reference with an espeak overtone mixed on, and however that overtone was placed it was a second person — in the intelligibility band it formed words, and outside it it became a drone, which is worse. Two voices saying the same thing is unison, and unison is OVERLORD's idea. So: the reference at pitch 0.88 and speed 0.92 (about 88 Hz against neural's 101, a shade under a tenth slower), with a broadcast EQ instead of a companion, and the 0.85 s pause after every conclusion that makes it deliberate rather than merely slow. It inherits neural's clarity because it IS neural."
     },
     {
       "id": "sagi",
@@ -142,6 +153,15 @@
      "rate": 0,
      "disabled": true,
      "note": "RESERVED, AND SHOWN RATHER THAN HIDDEN. A cast with a gap in it is more confusing than a locked door, so the slot is visible and refuses when pressed. It will clone from an uploaded reference through the voicey neural path; until that is wired end to end and gated, selecting it does nothing and says so."
+    }    ,
+    {
+     "id": "zen",
+     "label": "ZEN",
+     "title": "ZEN \u2014 one English assembled from the Englishes of East Asia: syllable-timed, unhurried",
+     "engine": "espeak-ng",
+     "voice": "en-zen+zen",
+     "rate": 150,
+     "note": "Built the way en-earth was \u2014 the features Japanese, Korean, Cantonese, Mandarin and Tibetan speakers of English AGREE on, so it imitates none of them. Syllable timing is where the calm actually lives: every one of those languages is syllable- or mora-timed where English is stress-timed, and syllables of even length do not rush. The l/r merger and any vowel substitution that changes which WORD is heard were deliberately left out, because a voice that cannot be understood is not calm, it is obscure. Measured f0 118.5 Hz."
     }
   ],
   "speeds": {

@@ -99,6 +99,58 @@ The three layers are aligned **per block**, each resampled to the body's exact
 sample count, so drift is bounded by one sentence instead of accumulating across
 a document. The alignment stretch is reported as a further detune, because it is.
 
+## The player's contract
+
+| control | behaviour |
+|---|---|
+| **LISTEN** | opens the panel **and reads**. Always. Closing is the × button's job. |
+| **LISTEN while reading** | becomes a red **STOP** — back to the top, not merely paused |
+| **voice change** | continues from where you were, carried as a FRACTION |
+| **panel** | draggable **and** resizeable, position and size remembered |
+| **AUDIO DECK** | open by default; the instruments and the fine controls together |
+
+**LISTEN's contract is the word on it.** The handler used to TOGGLE the panel and start
+playback only if the panel had been shut — so anything that had already opened it
+(autostart, an earlier press, a restored layout) turned LISTEN into a close button.
+
+**Autostart is off by default** for the same reason. A browser will not begin audio
+without a gesture, so on a first visit autostart could only open the panel and wait,
+which bought nothing and cost the button its meaning. `mount({autostart:true})` still
+exists, waits for 6 s of buffer with a 9 s deadline, and if the browser refuses leaves
+the panel open, loaded, and one press away **with the reason on the badge** — never a
+play glyph that has already been turned down.
+
+**A voice change carries a fraction, not a timestamp.** The same reading is 348 s in
+neural and 582 s in OVERLORD, so 240 seconds into one is not 240 seconds into the other;
+41% of the way through is 41% of the way through. On the mindX player the old voice also
+keeps reading while the new one renders — a layered voice can be minutes of build, and
+silence for that long is indistinguishable from a hang.
+
+## The word being read
+
+Two mechanisms, and the reader says which it is using.
+
+**live** — `speechSynthesis` fires real `onboundary` events, so the word is measured. The
+marker used to be found with `indexOf` on the block, which returns the FIRST occurrence:
+in *"the voice is the reference the voice is not edited"* every `the` lit the first one
+and the marker sat still while the reading moved on. It looked sloppy because it was —
+the finger was on a different instance of the right word. It now walks text nodes from a
+cursor that advances sentence by sentence.
+
+**file** — a rendered file carries no word boundaries, only the second each BLOCK begins.
+The block is exact; the position inside it is interpolated by weight (a word's length plus
+a bonus for the punctuation after it, which is what actually takes the time).
+
+Either way the marker **leads the clock by 220 ms**. `timeupdate` fires about four times a
+second, so it was on average an eighth of a second stale before it moved — and a reader
+watching the word follows the VOICE, so a consistently late marker reads as the page
+lagging rather than as sampling.
+
+**The three-word view** — previous, current, next, current highlighted — is driven by the
+same source, so the panel and the page can never disagree about which word is being said.
+Three words is the most you can read without moving your eyes, which makes it a place to
+rest them rather than a second document to track.
+
 ## The instrument deck
 
 The rack (`mindx/rack/`, built with esbuild to a committed artifact) owns no
@@ -113,6 +165,13 @@ window.listenVoice('jaimla')
 window.listenToggle()
 window.dispatchEvent(new Event('mindx:listen'))   // re-read
 ```
+
+The rack **measures its own box** with a ResizeObserver and steps between four layouts.
+It was authored at 760 px inside a 308 px panel, and `overflow-x:auto` meant nothing
+looked broken — the deck simply ran off the side with the voice switch out of reach. Steps
+rather than a smooth scale, because a knob has a size below which it stops being usable
+with a finger; below ~250 px the five strips become a two-column grid, since flex-wrap
+leaves an orphan and reads as a break rather than an adaptation.
 
 `ensureGraph()` builds `MediaElementSource → Gain → Analyser → destination`
 lazily, on first use — an `AudioContext` constructed before a user gesture is

@@ -240,7 +240,18 @@ button.say.on{color:#04040a;background:var(--cyan);border-color:var(--cyan)}
   // the per-row SAY demonstration, which is live synthesis and has nothing to fall back on.
   if (window.DVVoices) DVVoices.ready().then(function(){
     render();
-    if (window.DVDocReader) DVDocReader.mount();
+    if (window.DVDocReader) DVDocReader.mount({
+      // AUTOSTART IS OFF, AND ON PURPOSE. A browser will not begin audio without
+      // a gesture, so on a first visit autostart could only ever open the panel
+      // and wait — and an open panel made LISTEN ambiguous, because the button
+      // toggled the panel and read only if it had been shut. Pressing LISTEN
+      // then closed the player instead of reading it.
+      //
+      // LISTEN is the gesture, it is the one the browser accepts, and it is the
+      // one the word on the button promises. The page loads silent and reads
+      // when asked. (?autostart=1 still turns it on for anyone who wants it.)
+      autostart: /(^|&)autostart=1(&|$)/.test(location.search.slice(1))
+    });
     if (DVVoices.usable()) return;
     note.style.display = 'block';
     note.innerHTML = 'This browser exposes a speech synthesiser but has <b>no installed voices</b>, so the ' +

@@ -117,6 +117,56 @@ integer parameter — instead of the error it intended.
 The habit generalises. **A claim about a measurable quantity should carry the
 measurement**, and where the measurement is awkward the claim is usually wrong.
 
+## A layer in the intelligibility band is a second speaker
+
+LEADER was meant to be "a slowed neural with leader overtones on it". I built it by
+mixing an espeak voice onto the reference at 700–3200 Hz — and you heard two people.
+
+That band is where speech is made *intelligible*. Anything with energy there forms words,
+and anything that forms words is a speaker, however quiet you make it. So I moved it to
+150–620 Hz, out of the way — and it stopped forming words and became a drone, which is
+worse: now it was a second presence with nothing to say.
+
+The mistake was the whole approach. Two voices saying the same thing is UNISON, and
+unison is a real effect — it is what OVERLORD is built from, deliberately, because two
+people speaking together is a sound with no single owner. It is not *character*. A leader
+does not arrive with an accompanist.
+
+What a broadcast desk does to a real presenter is the answer: cut where the voice is
+muddy, lift where the words are, leave the rest alone. **One speaker, shaped.** LEADER is
+the reference at pitch 0.88 and speed 0.92 with four bands — +2.5 dB of chest, −3.5 dB
+through the 260–520 Hz mud that makes a low voice *heavy* rather than *deep*, +4 dB across
+the consonant band, −2 dB of sibilance — and it measures deeper, cleaner and more present
+at **0.0% WER**, the same as the reference. A voice that insists by being clearer rather
+than louder.
+
+The rule that generalises: **a layer inside the intelligibility band is a second speaker
+no matter how quiet; outside it, it is a timbre no matter how loud.** If you want
+character rather than company, shape the one voice you have.
+
+## Two implementations of one thing will differ, and you will not hear it coming
+
+The DeltaVerse audio store was supposed to be a clone of what mindX renders. It had
+matching parameters — same model, same length-scale, same rate — and it still did not
+sound the same, because two things differed that are not parameters:
+
+- **The synthesiser call.** Each side shelled out to piper itself: same binary, same
+  flags, two implementations. They had already drifted once over exactly that.
+- **The encoder.** mindX writes through the system libsndfile via ctypes; the store used
+  `opusenc --bitrate 24`. Two encoders at 24 kbps do not leave the same artefacts, and at
+  that bitrate the artefacts ARE the character.
+
+No amount of agreeing on numbers closes that, because the numbers were never what
+differed. The fix was to stop agreeing and start *calling*: the store is produced BY
+docspeech's engine and encoder, and is a caller of the definition rather than a copy of
+it. Both sides now report the same two strings, which is the check —
+`piper:en_GB-alan-medium · libsndfile:opus`.
+
+The same lesson arrived a third time in the standalone player, which kept its own table
+of voices: OVERLORD as an espeak mix, LEADER as plain espeak, H.A.L on the wrong base.
+Every entry was true when written and none was true a day later. **A copy of a definition
+is a definition that will be wrong; the only question is when.**
+
 ## Text, not markup, crosses a trust boundary
 
 When the reader ingests another page, nothing of that page's markup enters this

@@ -18,6 +18,9 @@ opusenc's filter instead of doing it with linear interpolation here.
 import json, subprocess, sys, wave, time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import mindx_voice
+
 PIPER  = "/home/mindx/mindX/.mindx_env/bin/piper"
 MODELS = "/home/mindx/mindX/data/models/piper"
 MODEL  = MODELS + "/en_GB-alan-medium.onnx"          # neural, and the default base
@@ -38,9 +41,13 @@ BLOCKS = json.load(open("/tmp/blocks.json"))
 # voice is female in the weights. The rate keeps mindX's 168 wpm against a 175
 # nominal (x0.96): softness here is unhurriedness, not slowness.
 DERIV = {
-    "jaimla":      {"name": "Jaimla",      "rate": 0.96, "pitch": 1.00,
-                    "model": "en_GB-jenny_dioco-medium",
-                    "note": "the mindX JAIMLA model itself, not a ratio on a male voice"},
+    # JAIMLA IS A CLONE, so she carries no numbers of her own: `clone` means the
+    # parameters are read from mindX's registry at render time. The ratio that
+    # used to live here (0.96 rate) happened to equal mindX's 175/168 exactly —
+    # a coincidence, and one that would have survived precisely as long as
+    # nobody touched either side.
+    "jaimla":      {"name": "Jaimla", "clone": "jaimla",
+                    "note": "the mindX JAIMLA, rendered with mindX's own parameters"},
     # overlord is NOT here any more. It stopped being a ratio on neural the day it
     # became its own voice — leader's body and ancient's absolutes, with a measured
     # octave under it. render_overlord.py builds it; a x0.86/x0.84 alan cannot.
@@ -51,25 +58,42 @@ DERIV = {
 def model_for(d):
     return MODELS + "/" + d["model"] + ".onnx" if d.get("model") else MODEL
 
-def synth(model, text, length_scale):
+def synth(model, text, length_scale, sentence_silence):
+    # --sentence-silence was never passed here, and piper's default is 0.0 — not
+    # the 0.2 one might assume. Every derived voice was running its sentences
+    # together while mindX's breathed between them.
     r = subprocess.run([PIPER, "--model", model, "--output-raw",
-                        "--length-scale", "%.6f" % length_scale],
+                        "--length-scale", "%.6f" % length_scale,
+                        "--sentence-silence", "%.3f" % sentence_silence],
                        input=text.encode("utf-8"), capture_output=True, timeout=300)
     if r.returncode != 0:
         raise RuntimeError("piper rc=%d: %s" % (r.returncode, r.stderr.decode()[:160]))
     return r.stdout
 
 for vid, d in DERIV.items():
-    model = model_for(d)
-    SR = int(json.load(open(model + ".json"))["audio"]["sample_rate"])
-    S, P = d["rate"], d["pitch"]
-    L = P / S                                   # phoneme length
-    out_sr = int(round(SR * P))                 # the pitch shift, as a declared rate
+    if d.get("clone"):
+        # a clone states nothing; it asks
+        VP = mindx_voice.params(d["clone"])
+        model = MODELS + "/" + VP["model"] + ".onnx"
+        SR = int(json.load(open(model + ".json"))["audio"]["sample_rate"])
+        L, P, ss = VP["lengthScale"], VP["pitch"], VP["sentenceSilence"]
+        S = P / L
+        out_sr = int(round(SR * P))
+    else:
+        model = model_for(d)
+        SR = int(json.load(open(model + ".json"))["audio"]["sample_rate"])
+        S, P = d["rate"], d["pitch"]
+        # A RATIO IS A RATIO ON THE REFERENCE AS IT IS NOW. neural's speed
+        # calibration moved, so everything measured against it moves too —
+        # otherwise "x1.08 of neural" quietly stops meaning that.
+        L = P / (S * mindx_voice._calibration())
+        out_sr = int(round(SR * P))             # the pitch shift, as a declared rate
+        ss = min(1.5, 0.25 * (L ** 2))
     t0 = time.time()
     pcm, marks = bytearray(), []
     for i, b in enumerate(BLOCKS):
         marks.append({"block": i, "at": round(len(pcm) / 2 / out_sr, 3)})
-        pcm += synth(model, b["text"], L)
+        pcm += synth(model, b["text"], L, ss)
         pcm += b"\x00\x00" * int(out_sr * 0.35)
     seconds = len(pcm) / 2 / out_sr
 
@@ -92,7 +116,9 @@ for vid, d in DERIV.items():
                        "length-scale %.4f for rate, %d Hz declared for pitch" % (L, out_sr)),
         "model": Path(model).name,
         "modelNote": d.get("note", "the neural reference model, with a stated delta"),
-        "delta": {"rate": S, "pitch": P},
+        "delta": {"rate": round(S, 4), "pitch": P},
+        "sentenceSilence": ss,
+        "clonedFrom": d.get("clone") and "mindX docspeech_voices.json",
         "lengthScale": round(L, 6), "sampleRate": out_sr,
         "generated": time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime()),
         "blocks": len(BLOCKS), "seconds": round(seconds, 3), "bytes": opus.stat().st_size,
@@ -101,6 +127,6 @@ for vid, d in DERIV.items():
                    "from": 0, "to": len(BLOCKS) - 1, "marks": marks}],
     }
     (outdir / "manifest.json").write_text(json.dumps(manifest, indent=1) + "\n")
-    print("  %-12s %-26s x%.2f rate x%.2f pitch  L=%.4f  %d Hz  %6.1fs  %4.0f KB  (%.0fs)"
-          % (vid, Path(model).stem, S, P, L, out_sr, seconds,
+    print("  %-12s %-26s x%.2f rate x%.2f pitch  L=%.4f  ss=%.3f  %d Hz  %6.1fs  %4.0f KB  (%.0fs)"
+          % (vid, Path(model).stem, S, P, L, ss, out_sr, seconds,
              opus.stat().st_size / 1024, time.time() - t0))

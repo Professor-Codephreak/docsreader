@@ -114,6 +114,12 @@ body{font-family:'Inter','SF Pro Text',system-ui,sans-serif;background:#050810;c
 /* accordions — the voice cast, and the things you touch once */
 .vacc{border:1px solid #21262d;border-radius:5px;background:rgba(13,17,23,.7)}
 .vdeck{border-top:1px solid #21262d;margin-top:6px}
+/* READING = STOP, IN RED. A button offering LISTEN while it is already reading is
+   offering something you have. Red because stop is the only control here with a
+   consequence, and it should not look like everything else. */
+.play.stopping{background:rgba(248,81,73,.14)!important;color:#ff6b64!important;
+  border:1px solid rgba(248,81,73,.75)!important}
+.play.stopping:hover{background:rgba(248,81,73,.24)!important;border-color:#ff6b64!important}
 /* FAIRYDUST. Particles are spawned into a fixed-position layer rather than into
    the button, because the button lives inside an accordion with overflow and a
    sparkle that gets clipped by its own parent is a sad thing. */
@@ -143,6 +149,8 @@ body{font-family:'Inter','SF Pro Text',system-ui,sans-serif;background:#050810;c
 .vdcar{display:inline-block;transition:transform .15s}
 .vdecktog.on .vdcar{transform:rotate(180deg)}
 .vdeck .ldeck{padding:0 8px 9px;overflow-x:auto;min-width:0}
+.ldeck-edit{padding:2px 9px 10px;display:flex;flex-direction:column;gap:6px}
+.ldeck-edit[hidden]{display:none}
 .vacc>summary{cursor:pointer;list-style:none;padding:6px 8px;font:600 10px/1.3 'SF Mono',monospace;
   letter-spacing:.14em;color:#c9d1d9;display:flex;justify-content:space-between;align-items:center}
 .vacc>summary::-webkit-details-marker{display:none}
