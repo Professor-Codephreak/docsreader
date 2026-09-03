@@ -85,6 +85,16 @@ VOICES = {
                  "rtf": 90,
                  "note": "the espeak Jaimla — a perfect fifth wide, breath in the tone; kept "
                          "because it is fast, but the neural JAIMLA above is the voice"},
+    "zen":      {"name": "ZEN", "voice": "en-zen+zen", "wpm": 150, "rtf": 90,
+                 "note": "one English assembled from the Englishes of East Asia — "
+                         "syllable-timed, unhurried, breath in the tone"},
+    "hal":      {"name": "H.A.L", "voice": "en-us+hal", "wpm": 150, "rtf": 90,
+                 "note": "the calm machine of 2001: warm, unhurried, and it never "
+                         "emphasises anything"},
+    "kitt":     {"name": "K.I.T.T", "voice": "en-us+kitt", "wpm": 165, "rtf": 90,
+                 "note": "bright, quick, precise and faintly superior — hal's opposite"},
+    "t800":     {"name": "T1000", "voice": "en-t800+t800", "wpm": 140, "rtf": 90,
+                 "note": "deep and flat, and not persuading you"},
     "sam":      {"name": "SAM",      "voice": "en-gb-scotland+sam", "wpm": 170, "rtf": 90,
                  "note": "the neutral one — a perfect fourth, neither major nor minor"},
     "classic":  {"name": "CLASSIC",  "voice": "en-gb-x-rp", "wpm": 175, "rtf": 90,

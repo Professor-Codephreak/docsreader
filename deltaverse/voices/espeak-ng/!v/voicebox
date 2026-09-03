@@ -1,0 +1,76 @@
+language variant
+language en-earth
+name voicebox
+gender male 45
+
+// VOICEBOX — the 1990s speaking machine, with a passport.
+//
+// This is the voice of a hardware speech box: the sound of formant synthesis
+// before anyone had the compute to hide that it was formant synthesis. Not a
+// parody of one — every choice below is what those machines actually did, and
+// why they sounded the way they did.
+//
+// It sits on `en-earth`, the world-English base, so the accent belongs to
+// nowhere in particular. That is the point of the character: a machine voice has
+// no hometown, and a box built to be understood everywhere was tuned to the
+// vowels several Englishes AGREE on rather than to any one of them.
+
+// A NARROW BAND, HELD. Those machines had a pitch generator, not a larynx: the
+// contour was computed, so it moved in steps and it moved very little. 118 is
+// mid-male — deliberately unremarkable, because the character is in the TIMBRE
+// and a distinctive pitch would only distract from it. The range of 22 is enough
+// that it is not a monotone drone and far too little to sound alive.
+pitch 118 140
+
+// THE GIVEAWAY IS THE FORMANTS, AND THEY ARE STEADY.
+// A real vocal tract is always moving, so its resonances smear. A formant
+// synthesiser holds each one at the target it was told, and the ear hears that
+// steadiness as machinery. The peaks are strong and narrow through F1-F3 (the
+// band that decides which vowel you heard) and fall off a cliff above F5,
+// because those boxes had a fixed number of resonators and simply stopped.
+formant 0 100 122 120
+formant 1 106 126 128
+formant 2 112 128 126
+formant 3 110 120 118
+formant 4 104 108  96
+formant 5  92  94  60
+formant 6  74  78  26
+formant 7  64  70  14
+formant 8  58  64   8
+
+// THE BUZZ IS THE POINT, AND IT LIVES AT 1 kHz.
+// A hard peak in the upper-mid with very little above 3 kHz is exactly the
+// spectral shape of a small speaker being driven by a pulse train. The bottom is
+// deliberately thin — those boxes had no chest, and adding one would make this a
+// person doing an impression instead of a machine.
+tone 300 150 1000 250 2000 175 3400 90
+
+// NO BREATH AT ALL. This is the single line that separates a machine from a
+// person: every human voice leaks air, and this one does not. voicing is pinned
+// high and flat, flutter is zero, roughness is zero. Nothing here is irregular,
+// because nothing here is biological.
+breath 0 0 0 0 0 0 0 0
+breathw 40 40 40 40 40 40 40 40
+voicing 100
+flutter 0
+roughness 0
+
+// OVER-ARTICULATED, WHICH IS WHY YOU COULD UNDERSTAND THEM OVER A PHONE LINE.
+// Those machines were built for announcements and accessibility, so consonants
+// were pushed hard — every stop released, every fricative full length. It is the
+// most machine-like thing about the voice and also the reason it is easy to
+// follow.
+consonants 98 96
+
+// A SMALL HARD ROOM: the cabinet the speaker was mounted in. Short enough to
+// read as a box rather than a hall, and it is a resonance, not an echo.
+echo 32 14
+
+// STRESS BY LOUDNESS, IN STEPS.
+// The contour was quantised, so emphasis arrives as a level change rather than
+// as a curve. stressAdd moves in even increments — no easing, no overshoot,
+// nothing a voice would actually do — and stressAmp is nearly flat, because
+// those boxes had one volume and used it.
+intonation 2
+stressAmp   15 15 16 16 17 17 18 18
+stressAdd    0 10 20 30 40 50 60 70

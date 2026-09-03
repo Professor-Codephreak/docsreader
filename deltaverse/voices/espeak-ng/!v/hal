@@ -1,0 +1,74 @@
+language variant
+language en-us
+name hal
+gender male 40
+
+// CLASSIC — the calm machine of 2001.
+//
+// The thing everyone misremembers about that voice is that it is not robotic. It
+// is soft, warm, unhurried and impeccably polite, and that is exactly what makes
+// it frightening: nothing in the delivery ever acknowledges the situation. A
+// clipped metallic voice saying those lines would be almost reassuring, because
+// you would know what you were dealing with.
+//
+// So every parameter here pulls AWAY from machinery and toward a very calm
+// person. The base is en-us: the performance was Canadian, which sits close
+// enough to General American that the vowels are right and far enough from RP
+// that it is not the announcer voice.
+
+// MID, AND ALMOST LEVEL. The range is 24 units — the narrowest in the cast apart
+// from ancient's zero. Not flat, because flat is a robot; NARROW, because
+// nothing being said is urgent, including the things that ought to be. The base
+// sits mid-male: he is not deep, and reaching for depth would make him
+// threatening, which is the one thing he never sounds.
+pitch 108 132
+
+// WARM AND CLOSE, WITH NO EDGE ANYWHERE.
+// The peak is at 700 Hz, low enough to read as chest and reassurance, and the
+// curve falls away steadily above 2 kHz so there is no sibilance and no glare.
+// The 1.6 kHz point stays up because his diction is immaculate — every syllable
+// is fully formed, and that precision is a large part of the effect. A voice this
+// gentle that you can nevertheless understand perfectly is uncanny in a way that
+// a gentle mumble is not.
+tone 240 195 700 240 1600 185 2400 115 3600 60
+
+// An open, unstrained tract. No formant is peaked hard — nothing about this
+// voice is pressed, ever.
+formant 0 100 126 130
+formant 1 104 124 128
+formant 2 106 118 120
+formant 3 104 110 106
+formant 4  99 102  88
+formant 5  92  92  64
+formant 6  84  82  40
+formant 7  78  76  26
+formant 8  74  72  18
+
+// BREATH, AND ABSOLUTE STEADINESS.
+// The paradox of the voice, in two lines. breath is generous — he sounds like he
+// is at ease, and ease is why the politeness reads as sincere. But flutter is 0
+// and roughness is 0: there is not one irregular moment anywhere. A human voice
+// under stress wavers; this one physically cannot, and that is the tell.
+breath  2 3 4 4 4 4 3 2
+breathw 100 135 150 150 150 150 135 105
+voicing 76
+roughness 0
+flutter 0
+
+// Consonants precise but soft — released fully, never struck. He articulates
+// like someone who has all the time in the world, because he does.
+consonants 78 74
+
+// A small dry room: a speaker in a cabin, not a hall. The point is proximity —
+// he is always closer than you would like.
+echo 60 9
+
+// NOTHING IS EVER EMPHASISED, AND THAT IS THE HORROR.
+// stressAmp barely moves across the whole range and stressAdd is a gentle even
+// ramp. He does not lean on a single word — not on "afraid", not on "Dave" — and
+// the refusal to emphasise anything is what makes the calm read as absolute
+// rather than merely composed. intonation 1 keeps the natural melody: he is
+// courteous, not withholding.
+intonation 1
+stressAmp   14 14 15 15 16 16 17 17
+stressAdd    0  5 11 17 23 29 36  43

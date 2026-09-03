@@ -1,0 +1,60 @@
+// en-zen — one English assembled from the Englishes of East Asia.
+//
+// Built the way en-earth was: NOT an impersonation of any one accent, but the
+// features on which Japanese, Korean, Cantonese, Mandarin and Tibetan speakers of
+// English AGREE. Where they differ, the feature is left alone — an accent built
+// from the intersection belongs to no one in particular, which is the point, and
+// is why it can be a character rather than a caricature.
+//
+// The shared features, and the ones taken:
+//   - SYLLABLE TIMING. Every one of these languages is syllable- or mora-timed,
+//     English is stress-timed. This is the single largest difference and the one
+//     that carries the calm: syllables of even length do not rush.
+//   - Reduced vowel-LENGTH contrast — long and short vowels move toward each
+//     other rather than one replacing the other.
+//   - TH is not in any of these phoneme inventories. It goes to /s/ and /d/,
+//     which is what the majority of speakers actually produce.
+//   - Final stops are lightly released; the tap replaces the English approximant
+//     /r/, which every one of these languages does something else with.
+//
+// What is NOT taken: the l/r merger, and vowel substitutions that change which
+// WORD is heard. A voice that cannot be understood is not calm, it is obscure —
+// and the whole purpose of this one is to be easy to listen to.
+
+name en-zen
+language en-zen 8
+language en 22
+
+phonemes en
+
+// SYLLABLE-TIMED, AND SLOW. This is where the calm actually lives.
+// The default English curve stretches stressed syllables hard and crushes
+// unstressed ones; these numbers are far flatter, so no syllable is hurried past
+// and none is leaned on. The whole set is also LONGER than default: unhurried is
+// not the same as slow, but it is not achievable without some room.
+stressLength 200 200 205 205 235 235 250 265
+
+// Even amplitude too — emphasis exists, but it does not lunge.
+stressAmp 16 16 17 17 19 19 21 22
+
+// A pause between words. Syllable-timed speech has audible boundaries where
+// stress-timed English runs words together, and that spacing is most of what
+// makes this register sound considered rather than merely slow.
+words 3
+
+dictrules 8
+
+// TH -> s and d. Not in any of the source inventories, and this is the
+// substitution the majority produce.
+replace 00 T s
+replace 00 D d
+
+// The English approximant /r/ becomes a tap. Safe: the tap exists in the table,
+// so nothing is deleted.
+replace 00 r *
+
+// Vowel-length contrast reduced rather than removed: the long vowel moves toward
+// the short one and keeps its identity. Deleting the distinction would change
+// which word is heard, which this voice will not do.
+replace 00 i: i
+replace 00 u: u

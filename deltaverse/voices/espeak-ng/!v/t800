@@ -1,0 +1,59 @@
+language variant
+language en-t800
+name t800
+gender male 55
+
+// CLASSIC, PRESSED THREE TIMES — the machine from the future.
+//
+// The third face of the same idea, and the one with no warmth in it at all.
+// hal is warm and never emphasises; kitt is bright and emphasises constantly;
+// this one is neither, because it is not persuading, reassuring or helping. It
+// is stating. The accent lives in voices/en-t800; this file is the body.
+
+// DEEP AND ALMOST MOTIONLESS.
+// Lower than hal by a fourth and with barely more range than ancient. It does
+// not go as low as OVERLORD (79 Hz) because OVERLORD is authority and this is
+// something simpler: mass. 92 -> ~89 Hz, and a range of 14, which is enough to
+// not be a drone and not enough to be an opinion.
+pitch 92 106
+
+// HEAVY LOW, DEAD TOP. Full through the fundamental octave, and everything above
+// 2.5 kHz falls away hard — the opposite of kitt, which lives up there. The 1.4
+// kHz point is held up only enough to keep the words: this voice is understood,
+// not enjoyed.
+tone 200 250 600 200 1400 165 2500 95 3800 40
+
+formant 0 102 132 142
+formant 1 100 126 136
+formant 2 102 116 120
+formant 3  98 106 100
+formant 4  92  98  80
+formant 5  86  90  58
+formant 6  76  80  34
+formant 7  70  74  22
+formant 8  66  70  16
+
+// NO AIR AND NO WAVER. breath is shut — hal's ease is exactly what this lacks —
+// and flutter is 0. roughness 2 is the only texture: not the rasp of age, the
+// grain of something built.
+breath 0 0 0 0 0 0 0 0
+breathw 50 55 60 60 60 60 55 50
+voicing 92
+roughness 2
+flutter 0
+
+// Hard consonants, struck rather than released. Where hal articulates patiently
+// and kitt articulates quickly, this articulates FLATLY — each one the same
+// weight as the last.
+consonants 94 86
+
+// A small hard space with nothing soft in it.
+echo 34 12
+
+// IT DOES NOT INSIST, BECAUSE IT DOES NOT EXPECT TO BE ARGUED WITH.
+// stressAdd is near zero — ancient's doctrine, arrived at from the other
+// direction — and stressAmp moves only a little. Nothing is emphasised because
+// nothing needs to be.
+intonation 3
+stressAmp   16 16 17 18 20 23 26 29
+stressAdd    0  0  0  0  4  8 14  20

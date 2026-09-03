@@ -1,0 +1,71 @@
+language variant
+language en-us
+name kitt
+gender male 35
+
+// CLASSIC, PRESSED TWICE — the car from Knight Rider.
+//
+// The counterpart to hal, and deliberately its opposite in every dimension that
+// hal commits to. Both are machines that speak like people; they are not the
+// same KIND of person. hal is warm, slow and never emphasises anything. This one
+// is bright, quick, precise and faintly superior — a very capable assistant who
+// is being patient with you, and would like that noticed.
+//
+// Same base (en-us) so the two are heard as one character's two moods rather
+// than as two accents.
+
+// HIGHER AND BRIGHTER, WITH ROOM TO BE WRY.
+// hal is 108/132 — the narrowest band in the cast. This is 132/186: up a fourth
+// and nearly twice the range, because this voice INFLECTS. The dryness is in the
+// timing and the consonants, not in a flat line; a wry remark needs somewhere to
+// go, and hal deliberately has nowhere.
+pitch 132 186
+
+// FORWARD, NOT WARM. The peak moves up to 1.5 kHz — out of the chest and into
+// the mouth — and the top stays open where hal's is rolled off hard. That
+// forwardness is the whole difference in colour: hal sounds like he is in the
+// room with you, this sounds like it is coming out of a dashboard, and it is.
+// The slight lift at 3 kHz is what reads as electronic without being a robot.
+tone 320 165 1500 245 2400 200 3000 170 4200 110
+
+// A shorter, brighter tract: F2 and F3 up, which is what makes a voice sound
+// like it is smiling slightly even when it is not.
+formant 0  98 116 116
+formant 1 102 118 122
+formant 2 110 124 126
+formant 3 112 118 118
+formant 4 108 110  98
+formant 5 100  98  78
+formant 6  90  88  52
+formant 7  84  82  36
+formant 8  80  78  26
+
+// NO BREATH, AND A FAINT EDGE.
+// hal's generosity of air is what makes him sound at ease. This voice has almost
+// none: it is not relaxed, it is EFFICIENT. roughness 1 puts the faintest grain
+// on it — the trace of a circuit rather than a throat — and flutter stays 0,
+// because it is no more capable of wavering than hal is.
+breath 0 1 1 1 1 1 1 0
+breathw 60 75 85 85 85 85 75 60
+voicing 88
+roughness 1
+flutter 0
+
+// CRISP. Every consonant struck cleanly and released. hal articulates like
+// someone with all the time in the world; this articulates like someone who has
+// already finished the sentence and is waiting for you to catch up.
+consonants 92 88
+
+// Almost no room at all — a small hard cabin, close-miked. 26 ms is below the
+// threshold the ear reads as an echo, so it registers as a surface rather than
+// a space.
+echo 26 10
+
+// EMPHASIS, AND PLENTY OF IT.
+// hal leans on nothing, which is his whole character. This leans on quite a lot:
+// stressAdd climbs steeply and stressAmp with it, so the voice points at the
+// important word and expects you to have noticed. That is the difference between
+// something unnerving and something helpful.
+intonation 2
+stressAmp   15 16 17 19 21 24 27 30
+stressAdd    0  8 18 30 44 60  88 120

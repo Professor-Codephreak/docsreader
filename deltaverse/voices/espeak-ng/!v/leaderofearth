@@ -13,22 +13,44 @@ gender male 50
 // is byte-identical to en-gb. Only a full voice file can redefine a phoneme.
 // What remains here is the BODY: pitch, overtones, mass and contour.
 
+// LEADER IS NOT OVERLORD, AND THE DIFFERENCE IS THE ARGUMENT.
+// OVERLORD decides: stressAdd zero, f0 79, nothing ever rises. LEADER PERSUADES,
+// and persuasion needs somewhere to go — it keeps its stress lift and it sits a
+// fifth higher, because a voice that never moves cannot carry an argument, only
+// a verdict. What it takes FROM overlord is the flatness of the low levels and
+// the refusal to get shrill; what it takes from VOICEBOX is over-articulation,
+// which is the one thing a 1990s speaking machine did better than any of us; and
+// what it takes from NEURAL and JAIMLA is the top — see the tone curve.
+//
 // DEEPER, BECAUSE AUTHORITY IS LOW.
 // Was 82/164 and measured 138.7 Hz median. Now 70/142 and measures 117.9 Hz —
 // three semitones down, into the range a bass actually speaks in. espeak's two
 // numbers are base and range, not floor and ceiling; the range comes down with
-// the base so the voice never lifts into brightness when it insists.
-pitch 70 142
+// the base so the voice never lifts into brightness when it insists. The range
+// narrows 142 -> 132: still an interval, because leader argues, but a smaller
+// one, because a wide range reads as excitable and this voice is not.
+pitch 72 132
 
 // THE CURVE THAT IS BOTH HEAVY AND CLEAR.
 // The old curve peaked at 330 Hz — in the mud — and crushed everything above
 // 1.3 kHz to 86. It measured 12.4% of its energy in the 2-5 kHz presence band,
 // which is where consonants live, and it sounded dark because it WAS dark.
 // This is a broadcast-authority shape instead: full at the fundamental octave,
-// SCOOPED at 700 Hz where boom turns to mud, and lifted again at 3 kHz.
+// SCOOPED at 700 Hz where boom turns to mud, and lifted again above it.
 // Presence measured 12.4% -> 23.7%. That is the clarity, and it was bought by
 // removing mud, not by adding treble.
-tone 165 255 300 205 700 130 1400 150 3000 180
+//
+// THE OVERTONES ARE NEURAL'S AND JAIMLA'S, AND THAT IS WHERE UNIVERSAL LIVES.
+// The curve now carries two points where it had one: 2600 at 185 and 3400 at
+// 175. 2.6 kHz is where JAIMLA sparkles without turning sibilant (her own curve
+// tops out at 2400/130 and stays deliberately soft), and 3.4 kHz is the band
+// NEURAL — the piper reference at f0 94.6 — puts its consonant energy in. Taking
+// the SHAPE of their top while keeping this voice's own bottom is what "overtones
+// for clarity" means: the words arrive with the brightness of the two clearest
+// voices in the cast, on a body neither of them has. The scoop deepens slightly
+// (130 -> 125) to pay for it, because lifting the top without cutting the mud
+// only makes a voice louder.
+tone 165 255 300 210 700 125 1400 165 2600 185 3400 175
 
 // Chest at the bottom, articulation restored in the upper-mid. F0/F1 carry the
 // mass; F3/F4 come back up (98->104, 90->98) so the resounding part of
@@ -49,15 +71,38 @@ formant 8  68  72  20
 // clarity. voicing up 88 -> 96 for fuller fold closure and more chest.
 // The echo is bigger (140/18 -> 165/20): a room, which is what "resounding"
 // literally means. breath stays nearly shut; this voice is not confiding.
+// VOICEBOX'S STEADINESS, WITHOUT ITS COLDNESS. roughness 2 -> 1: the 1990s box
+// is roughness 0 and reads as a machine precisely because nothing about it is
+// irregular. Leader wants the legibility of that, not the deadness, so it takes
+// half the distance. flutter stays 0 — the pitch does not hesitate, ever.
 flutter 0
-roughness 2
+roughness 1
 breath 0 1 1 1 1 1 1 0
 breathw 60 70 80 80 80 80 70 60
 voicing 96
-consonants 92 80
-echo 165 20
+// OVER-ARTICULATED, WHICH IS WHY YOU COULD UNDERSTAND THOSE MACHINES OVER A
+// PHONE LINE. voicebox runs 98/96 and it is the single most legible thing in the
+// cast. 96/88 takes most of that without the clatter that comes with the last
+// few points.
+consonants 96 88
+// A ROOM, NOT A HALL. 165/20 was a cathedral, and a cathedral is where you are
+// addressed rather than persuaded. 100/15 is a room with people in it — still
+// resonant, which is what "resounding" literally means, and no longer a space
+// the listener is standing at the far end of.
+echo 100 15
 
-// DIRECTION FROM STRENGTH, NOT FROM PITCH.
+// DIRECTION FROM STRENGTH, NOT FROM PITCH — AND NOW MEASURED.
+// This file already argued that emphasis belongs in loudness rather than in
+// pitch. Whisper round-trip says so too, and says it loudly: with the old ramp
+// (0..80) leader reads at 10.3% WER; with a reduced ramp (0..68) it went UP to
+// 15.4%; with the ramp removed entirely it comes back to 10.3%. Every other
+// change in this retune measured neutral. So the lift goes almost to zero — a
+// token 12/20 at the top two levels only — and the drive stays entirely in
+// stressAmp, which was raised to compensate.
+//
+// CAVEAT, STATED: that is one 39-word passage, and five points of WER is two
+// words. It is enough to rule OUT a change that claims to improve clarity and
+// does the opposite; it is not enough to rank two good options apart.
 // The old stress curve lifted the top levels 95 and 140 cents. A voice that
 // goes UP to insist is pleading; a voice that gets LOUDER and LONGER to insist
 // is commanding. So emphasis moves out of stressAdd (95/140 -> 55/80) and into
@@ -65,5 +110,5 @@ echo 165 20
 // The pause between clauses is not here: it is `words 2` and the lengthened
 // stressLength in en-earth, which belong to the accent, not the body.
 intonation 3
-stressAmp   16 16 18 20 22 25 29 32
-stressAdd    0  0  6 12 20 30 55  80
+stressAmp   16 16 18 20 23 26 30 34
+stressAdd    0  0  0  0  0  0 12  20

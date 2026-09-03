@@ -1,0 +1,231 @@
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter','SF Pro Text',system-ui,sans-serif;background:#050810;color:#b8c0cc;padding:0;margin:0;line-height:1.7}
+.page{max-width:780px;margin:0 auto;padding:28px 24px 40px}
+.nav{font-size:.72em;color:#4a5060;margin-bottom:20px;padding-bottom:0;border-bottom:none;display:flex;flex-direction:column;gap:0;position:sticky;top:0;z-index:10;background:#050810}
+.nav-row{display:flex;align-items:center;flex-wrap:wrap;gap:0;padding:6px 0;border-bottom:1px solid rgba(26,31,46,.4)}
+.nav-row:last-child{margin-bottom:12px}
+.nav a{color:#79c0ff;text-decoration:none;margin-right:8px;white-space:nowrap;transition:color .2s}.nav a:hover{text-decoration:underline;color:#a5d6ff}
+.nav .sep{color:rgba(88,166,255,.15);margin:0 3px;user-select:none}
+.nav .brand{color:#e6edf3;font-weight:700;font-family:'SF Mono',monospace;margin-right:12px;font-size:1.3em;letter-spacing:.5px}
+.nav .brand b{color:#58a6ff}
+.nav .dim{color:#6e7681;transition:color .2s}.nav .dim:hover{color:#79c0ff}
+.nav .grp{color:#8b949e;font-size:.9em;text-transform:uppercase;letter-spacing:.8px;margin-right:6px;font-weight:600}
+.font-ctrl{position:fixed;right:12px;top:50%;transform:translateY(-50%);z-index:20;display:flex;flex-direction:column;gap:4px;align-items:center}
+.font-ctrl button{width:28px;height:28px;border-radius:4px;border:1px solid rgba(88,166,255,.2);background:rgba(5,8,16,.9);color:#58a6ff;font-size:14px;cursor:pointer;font-family:'SF Mono',monospace;transition:all .2s;backdrop-filter:blur(8px)}
+.font-ctrl button:hover{border-color:#58a6ff;background:rgba(88,166,255,.08)}
+.font-ctrl button.play{color:#fff;background:#1f6feb;border-color:#1f6feb;font-size:10px;font-weight:700;letter-spacing:.6px;width:44px;margin-top:6px;align-self:center}
+.font-ctrl .speed{display:flex;flex-direction:column;gap:2px;margin-top:4px;align-self:center}
+.font-ctrl .speed button{width:44px;height:20px;font-size:9px;padding:0;color:#8b949e;border-color:rgba(88,166,255,.15);background:rgba(5,8,16,.9)}
+.font-ctrl .speed button[aria-checked="true"],.font-ctrl .speed button[aria-selected="true"]{color:#fff;background:rgba(31,111,235,.55);border-color:#1f6feb}
+.font-ctrl .speed button:hover{border-color:#3fb950;color:#e6edf3}
+.font-ctrl .vtools,.font-ctrl .voice{display:flex;flex-direction:column;gap:2px;margin-top:6px;align-self:center}
+.font-ctrl .vtools button,.font-ctrl .voice button{width:44px;height:18px;font-size:8px;letter-spacing:.4px;padding:0;color:#8b949e;border-color:rgba(88,166,255,.15);background:rgba(5,8,16,.9)}
+.font-ctrl .voice button[aria-checked="true"]{color:#fff;background:rgba(31,111,235,.55);border-color:#1f6feb}
+.font-ctrl .speedslide,.font-ctrl .volslide{display:flex;flex-direction:column;align-items:center;gap:1px;margin-top:3px;align-self:center}
+.font-ctrl .speedslide input[type=range],.font-ctrl .volslide input[type=range]{width:44px;height:12px;margin:0;accent-color:#1f6feb;background:transparent;cursor:pointer}
+/* past 100% the slider is amplifying, not just playing louder — say so in the colour */
+.font-ctrl .volslide input[type=range]{accent-color:#3fb950}
+.font-ctrl .deckbtn{margin-top:3px;align-self:center;font-size:9px;letter-spacing:.14em;padding:2px 6px;
+  border:1px solid #30363d;border-radius:3px;background:#0d1117;color:#8b949e;cursor:pointer}
+.font-ctrl .deckbtn:hover{color:#e6edf3;border-color:#484f58}
+.font-ctrl .deckbtn.on{color:#e3b341;border-color:#e3b341}
+.ldeck{margin:8px 0 4px;padding:0;background:transparent;max-width:100%;overflow-x:auto}
+.lskills{margin:8px 0 4px;padding:10px 12px;background:#0a0e16;border:1px solid #21262d;border-radius:6px;
+  color:#8b949e;font:11px/1.5 ui-monospace,'SF Mono',Menlo,monospace;white-space:pre;overflow-x:auto;max-width:100%}
+.lskills[hidden]{display:none}
+.ldeck[hidden]{display:none}
+.font-ctrl .rateout{font-size:8px;color:#8b949e;font-family:"SF Mono",monospace;letter-spacing:.3px}
+
+/* ── the listen panel: one container for the whole voice UI ──────────────────
+   The controls used to be a 44px-wide stack of loose buttons pinned to the
+   right edge, with the oscilloscope living somewhere else entirely — at the
+   BOTTOM of the document, hundreds of lines away from the PLAY button that
+   started it. This is one panel: transport, sliders, scope, and two accordions,
+   in the order you use them. It is closed until LISTEN asks for it, because a
+   document page is for reading. */
+.lbtn{display:inline-flex;align-items:center;gap:5px;vertical-align:middle;margin-left:14px;
+  padding:3px 10px;border:1px solid #1f6feb;border-radius:4px;background:rgba(31,111,235,.12);
+  color:#58a6ff;font:600 11px/1.4 'SF Mono',ui-monospace,monospace;letter-spacing:.12em;
+  cursor:pointer;transition:all .15s}
+.lbtn:hover{background:rgba(31,111,235,.25);color:#fff}
+.lbtn.on{background:#1f6feb;border-color:#1f6feb;color:#fff}
+.lbtn .lbtn-i{font-size:9px}
+.vpanel{position:fixed;right:52px;top:50%;transform:translateY(-50%);z-index:21;width:308px;
+  min-width:292px;max-width:96vw;max-height:88vh;overflow:auto;resize:both;
+  display:flex;flex-direction:column;gap:7px;padding:10px;
+  border:1px solid #30363d;border-radius:8px;background:rgba(6,10,18,.975);
+  box-shadow:0 12px 40px rgba(0,0,0,.75),0 0 0 1px rgba(88,166,255,.07);backdrop-filter:blur(12px)}
+/* dragged: the panel stops being pinned to the right edge and owns its own left/top */
+.vpanel.moved{right:auto;transform:none}
+/* TRANSPARENCY. A player that sits over the paragraph you are reading is a
+   player you want to see THROUGH, not one you want to keep moving. Three steps,
+   cycled from the titlebar; hovering or focusing anything inside always brings
+   it back to solid, so a translucent player is still a usable one rather than a
+   decoration you have to un-fade before you can press anything. */
+.vpanel{opacity:var(--vp-op,1);transition:opacity .18s ease}
+.vpanel:hover,.vpanel:focus-within{opacity:1}
+.vpanel .vhead button.on{color:#e3b341}
+/* SHADE — XMMS windowshade. Everything folds away except the spine: transport,
+   timeline, download. Nothing is duplicated to make this work; the bar IS the
+   transport in both modes, which is why it can be the minimal form at all. */
+.vpanel.shaded{width:auto;min-width:360px;resize:horizontal;max-height:none;overflow:visible}
+.vpanel.shaded .xbody{display:none}
+/* shaded: keep the scope, drop the readout beside it, and lay it out flat */
+.vpanel.shaded .xmeta{display:none}
+.vpanel.shaded .xvis{width:100%;height:30px}
+.vpanel.shaded .xtop{display:block}
+.vpanel .xbody{display:flex;flex-direction:column;gap:7px;min-width:0}
+.vhead{cursor:grab;user-select:none}
+.vhead.dragging{cursor:grabbing}
+.vpanel[hidden]{display:none}
+.vpanel .vhead{display:flex;align-items:center;justify-content:space-between;
+  font:600 10px/1 'SF Mono',monospace;letter-spacing:.18em;color:#9aa4b1}
+.vpanel .vhead button{width:20px;height:20px;font-size:13px;line-height:1;border:0;background:none;
+  color:#9aa4b1;cursor:pointer;padding:0;border-radius:3px}
+.vpanel .vhead button:hover{background:rgba(255,255,255,.08)}
+.vpanel .vhead button:hover{color:#e6edf3}
+.vpanel .vrow{display:flex;align-items:center;gap:8px}
+/* PLAY is the biggest thing in the panel, and it says PAUSE while it is playing. */
+.vpanel .play{flex:1;height:30px;width:auto;margin:0;border-radius:5px;font-size:11px;font-weight:700;
+  letter-spacing:.14em;color:#fff;background:#1f6feb;border:1px solid #1f6feb;cursor:pointer;
+  font-family:'SF Mono',monospace}
+.vpanel .play:hover{background:#2b7ef5}
+.vpanel .play.playing{background:#3fb950;border-color:#3fb950;box-shadow:0 0 0 1px rgba(63,185,80,.35)}
+.vpanel .lstat{font:600 10px/1 'SF Mono',monospace;color:#c9d1d9;min-width:30px;text-align:right}
+.vslide{display:flex;align-items:center;gap:6px}
+.vslide label{font:600 9.5px/1 'SF Mono',monospace;letter-spacing:.14em;color:#9aa4b1;width:40px;flex:none}
+.vslide input[type=range]{flex:1;height:14px;margin:0;accent-color:#1f6feb;background:transparent;cursor:pointer;min-width:0}
+.vslide .vout{font:600 9.5px/1 'SF Mono',monospace;color:#e6edf3;width:46px;text-align:right;flex:none}
+.vslide.vol input[type=range]{accent-color:#3fb950}
+.vslide.zoom input[type=range]{accent-color:#e3b341}
+.vpanel .lscope{display:block;width:100%;height:64px;border:1px solid #30363d;border-radius:4px;
+  background:radial-gradient(ellipse at 50% 50%,#0a1420 0%,#04070d 100%)}
+.xvis{border-color:#30363d !important}
+.vpanel .vtools{display:flex;gap:4px}
+.vpanel .vtools button{flex:1;width:auto;height:21px;font-size:9.5px;font-weight:600;letter-spacing:.5px;padding:0;
+  color:#c9d1d9;border:1px solid rgba(88,166,255,.15);border-radius:3px;background:rgba(5,8,16,.9);
+  cursor:pointer;font-family:'SF Mono',monospace}
+.vpanel .vtools button[aria-selected="true"]{color:#3fb950;border-color:#3fb950;background:rgba(63,185,80,.12)}
+/* accordions — the voice cast, and the things you touch once */
+.vacc{border:1px solid #21262d;border-radius:5px;background:rgba(13,17,23,.7)}
+.vdeck{border-top:1px solid #21262d;margin-top:6px}
+/* A voice that is not ready is SHOWN and refused, not hidden: a gap in the cast
+   is more confusing than a locked door. Dimmed, struck through on the label, and
+   the cursor says so before you press it. */
+.voice button[data-soon]{opacity:.38;cursor:not-allowed;text-decoration:line-through;
+  text-decoration-thickness:1px;text-decoration-color:rgba(139,148,158,.7)}
+.voice button[data-soon]:hover{opacity:.5;background:none;border-color:#21262d;color:inherit}
+/* the word being spoken. A background rather than a colour change: colour alone
+   moves the text's contrast around as it travels, and the eye loses the line. */
+.dvr-word{background:rgba(227,179,65,.26);border-radius:3px;box-shadow:0 0 0 2px rgba(227,179,65,.26)}
+.dvr-lit{background:rgba(88,166,255,.10);border-radius:4px;box-shadow:0 0 0 3px rgba(88,166,255,.10)}
+.vdecktog{width:100%;display:flex;align-items:center;gap:6px;background:none;border:0;cursor:pointer;
+  padding:7px 9px;font:600 10px/1.3 'SF Mono',monospace;letter-spacing:.14em;color:#6b7480;text-align:left}
+.vdecktog:hover{color:#e6edf3}
+.vdecktog.on{color:#e3b341}
+.vdcar{display:inline-block;transition:transform .15s}
+.vdecktog.on .vdcar{transform:rotate(180deg)}
+.vdeck .ldeck{padding:0 8px 9px;overflow-x:auto}
+.vacc>summary{cursor:pointer;list-style:none;padding:6px 8px;font:600 10px/1.3 'SF Mono',monospace;
+  letter-spacing:.14em;color:#c9d1d9;display:flex;justify-content:space-between;align-items:center}
+.vacc>summary::-webkit-details-marker{display:none}
+.vacc>summary:hover{color:#e6edf3}
+.vacc>summary b{color:#58a6ff;font-weight:700;letter-spacing:.08em}
+.vacc[open]>summary{border-bottom:1px solid #21262d}
+.vacc .vaccb{padding:7px 8px;display:flex;flex-direction:column;gap:5px}
+.vpanel .voice{display:grid;grid-template-columns:1fr 1fr;gap:3px}
+.vpanel .voice button{width:auto;height:23px;font-size:9.5px;font-weight:600;letter-spacing:.3px;padding:0;color:#c9d1d9;
+  border:1px solid rgba(88,166,255,.15);border-radius:3px;background:rgba(5,8,16,.9);cursor:pointer;
+  font-family:'SF Mono',monospace}
+.vpanel .voice button[aria-checked="true"]{color:#fff;background:rgba(31,111,235,.55);border-color:#1f6feb}
+.vpanel .speed{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
+.vpanel .speed button{width:auto;height:21px;font-size:9.5px;font-weight:600;padding:0;color:#c9d1d9;
+  border:1px solid rgba(88,166,255,.15);border-radius:3px;background:rgba(5,8,16,.9);cursor:pointer;
+  font-family:'SF Mono',monospace}
+.vpanel .speed button[aria-checked="true"]{color:#fff;background:rgba(31,111,235,.55);border-color:#1f6feb}
+.vpanel .deckbtn{width:100%;font-size:10px;font-weight:600;letter-spacing:.14em;padding:5px 6px;border:1px solid #30363d;
+  border-radius:3px;background:#0d1117;color:#c9d1d9;cursor:pointer;font-family:'SF Mono',monospace}
+.vpanel .deckbtn.on{color:#e3b341;border-color:#e3b341}
+.vhint{font:9px/1.5 'SF Mono',monospace;color:#8b949e}
+
+/* ── the XMMS/Winamp 2.x face ────────────────────────────────────────────────
+   Borrowed on purpose, because that layout solved this exact problem in 1997
+   and has not been improved on for a small fixed-size audio player: a title
+   marquee, an LED clock, a tiny visualiser, one row of transport, a seek bar,
+   volume and balance, and two buttons that open the other two windows. The
+   document's PARTS are literally a playlist, so PL is not a metaphor here.
+   The skin is ours (this is not a Winamp skin, it is that anatomy) — the green
+   LED is the one thing worth copying verbatim. */
+.xtop{display:flex;gap:7px;align-items:stretch}
+.xvis{width:76px;height:44px;flex:none;border:1px solid #21262d;border-radius:3px;background:#050810;display:block}
+.xmeta{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:space-between;gap:2px}
+.xclock{font:700 21px/1 'SF Mono',ui-monospace,monospace;color:#56d364;letter-spacing:.06em;
+  text-shadow:0 0 7px rgba(63,185,80,.5)}
+.xclock small{font-size:10px;color:#3fb950;letter-spacing:.1em;margin-left:5px;text-shadow:none}
+.xmarq{overflow:hidden;white-space:nowrap;font:10px/1.3 'SF Mono',monospace;color:#c9d1d9}
+.xmarq span{display:inline-block;white-space:pre}
+.xkbps{display:flex;gap:8px;font:9px/1 'SF Mono',monospace;color:#8b949e;letter-spacing:.06em}
+.xkbps b{color:#56d364;font-weight:700}
+.xtrans{display:flex;gap:3px}
+.xtrans button{flex:1;height:22px;font-size:10px;padding:0;color:#8b949e;border:1px solid #21262d;
+  border-radius:3px;background:#0d1117;cursor:pointer;font-family:'SF Mono',monospace;line-height:1}
+.xtrans button:hover{color:#e6edf3;border-color:#484f58}
+.xtrans button.play{flex:1.6;color:#fff;background:#1f6feb;border-color:#1f6feb;font-weight:700;letter-spacing:.1em;font-size:10px}
+.xtrans button.play.playing{background:#3fb950;border-color:#3fb950}
+.xseek{width:100%;height:12px;margin:0;accent-color:#3fb950;background:transparent;cursor:pointer;display:block}
+.xwin{display:flex;gap:4px}
+.xwin button{flex:1;height:19px;font:600 8px/1 'SF Mono',monospace;letter-spacing:.16em;color:#8b949e;
+  border:1px solid #21262d;border-radius:3px;background:#0d1117;cursor:pointer}
+.xwin button[aria-expanded="true"]{color:#e3b341;border-color:#e3b341;background:rgba(227,179,65,.1)}
+.xpl{max-height:132px;overflow-y:auto;display:flex;flex-direction:column;gap:1px}
+.xpl button{display:flex;justify-content:space-between;gap:6px;width:100%;text-align:left;padding:5px 7px;
+  font:10px/1.3 'SF Mono',monospace;color:#c9d1d9;border:1px solid transparent;border-radius:3px;
+  background:none;cursor:pointer}
+.xpl button:hover{background:rgba(88,166,255,.07);color:#e6edf3}
+.xpl button[aria-current="true"]{color:#3fb950;border-color:rgba(63,185,80,.35);background:rgba(63,185,80,.08)}
+.xpl button i{font-style:normal;color:#8b949e}
+/* the spine: transport + timeline + download, one row, always visible */
+/* The spine must survive being narrowed: its buttons are fixed-width, so at a
+   small panel size the total overruns the box and clips the download control off
+   the right edge. It wraps to a second row instead of overflowing — still the
+   minimal player, just two lines of it. */
+.xbar{display:flex;align-items:center;gap:5px;min-width:0;flex-wrap:wrap;row-gap:4px}
+.xbar .xseek{flex:1 1 90px}
+.xbar button{height:25px;padding:0 7px;font-size:11px;font-weight:600;color:#c9d1d9;border:1px solid #21262d;
+  border-radius:3px;background:#0d1117;cursor:pointer;font-family:'SF Mono',monospace;line-height:1;flex:none}
+.xbar button:hover{color:#e6edf3;border-color:#484f58}
+.xbar button.play{min-width:52px;color:#fff;background:#1f6feb;border-color:#1f6feb;font-weight:700;letter-spacing:.08em}
+.xbar button.play.playing{background:#3fb950;border-color:#3fb950}
+.xbar .xtime{font:700 10.5px/1 'SF Mono',monospace;color:#56d364;flex:none;white-space:nowrap}
+.xbar a.dl{display:inline-flex;align-items:center;justify-content:center;height:25px;padding:0 8px;
+  font-size:13px;color:#c9d1d9;border:1px solid #21262d;border-radius:3px;background:#0d1117;
+  text-decoration:none;flex:none}
+.xbar a.dl:hover{color:#3fb950;border-color:#3fb950}
+.xbar a.dl[aria-disabled="true"]{opacity:.4;pointer-events:none}
+@media (max-width:900px){.vpanel{right:8px;left:8px;width:auto;max-height:70vh}}
+.font-ctrl .vtools button[aria-selected="true"]{color:#3fb950;border-color:#3fb950;background:rgba(63,185,80,.12)}
+.font-ctrl .voice button[aria-selected="true"]{color:#fff;background:rgba(31,111,235,.55);border-color:#1f6feb}
+.font-ctrl .vtools button:hover,.font-ctrl .voice button:hover{border-color:#3fb950;color:#e6edf3}
+/* .lscope now lives inside .vpanel — see the player block above */
+.font-ctrl button.play:hover{background:#388bfd;border-color:#3fb950;box-shadow:0 0 6px rgba(63,185,80,.45)}
+.font-ctrl .lstat{font-size:9px;color:#8b949e;text-align:center;font-family:'SF Mono',monospace;min-height:11px}
+.ldock{position:fixed;right:48px;bottom:14px;width:300px;max-width:calc(100vw - 60px);z-index:20;display:none;height:32px;filter:drop-shadow(0 2px 8px rgba(0,0,0,.6))}
+h1{color:#e6edf3;font-size:22px;margin:24px 0 12px;letter-spacing:.3px;font-weight:700}
+h2{color:#58a6ff;font-size:17px;margin:28px 0 12px;padding-top:18px;border-top:1px solid rgba(26,31,46,.4);font-weight:600}
+h3{color:#d2a8ff;font-size:14px;margin:18px 0 8px;font-weight:600}
+h4{color:#8b949e;font-size:12px;margin:14px 0 4px;font-weight:600}
+p{margin:8px 0;font-size:13px;color:#b0b8c4;line-height:1.7}
+strong{color:#e6edf3}em{color:#8b949e}
+a{color:#58a6ff;text-decoration:none}a:hover{text-decoration:underline;color:#79c0ff}
+code{background:rgba(22,27,34,.85);padding:2px 5px;border-radius:3px;color:#7ee787;font-size:11px;font-family:'SF Mono','Fira Code',monospace}
+pre{background:rgba(22,27,34,.85);padding:14px;border-radius:5px;font-size:11px;overflow-x:auto;margin:12px 0;color:#b0b8c4;font-family:'SF Mono','Fira Code',monospace;line-height:1.5;border:1px solid rgba(26,31,46,.3)}
+li{margin:4px 0 4px 20px;font-size:13px;line-height:1.7;color:#b0b8c4}
+ul,ol{margin:8px 0}
+blockquote{border-left:3px solid rgba(88,166,255,.3);padding:10px 18px;color:#8b949e;margin:14px 0;font-size:12px;font-style:italic;background:rgba(13,17,23,.5);border-radius:0 4px 4px 0}
+hr{border:none;border-top:1px solid rgba(26,31,46,.35);margin:24px 0}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:11px}
+th{text-align:left;padding:6px 8px;border-bottom:2px solid rgba(26,31,46,.5);color:#e6edf3;font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+td{padding:5px 8px;border-bottom:1px solid rgba(26,31,46,.25)}
+tr:hover td{background:rgba(22,27,34,.3)}
+img{max-width:100%;border-radius:4px;margin:8px 0}
+.title-meta{font-size:.72em;color:#4a5060;margin-bottom:20px}

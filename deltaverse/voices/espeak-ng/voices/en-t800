@@ -1,0 +1,35 @@
+// en-t800 — English as spoken by the machine from the future.
+//
+// The accent is Austrian-German-influenced English, and only the two features
+// that carry it are taken. Recognisability is not the same as thoroughness: a
+// full transfer accent would be a costume, while these two are the ones anyone
+// can hear and neither of them changes which WORD you heard.
+//
+//   w -> v    the single most identifiable feature of German-accented English
+//   T -> z    /theta/ is not in the German inventory; z is the usual production
+//   D -> d    and the voiced pair goes to /d/, which is the same substitution
+//
+// Deliberately NOT taken: final-obstruent devoicing. It is real and it is
+// characteristic, and it turns "bad" into "bat" and "leave" into "leaf" — it
+// changes the word, and a voice that cannot be trusted to say the word is no
+// longer usable as a reading voice, however good the impression.
+
+name en-t800
+language en-t800 8
+language en 22
+
+phonemes en
+
+// DELIBERATE. Longer syllables across the board, and a smaller gap between
+// stressed and unstressed than English wants — the flatness of someone speaking
+// a second language carefully, which happens to be the flatness of something
+// that does not need to hurry.
+stressLength 195 195 200 200 225 225 240 250
+stressAmp 16 16 17 18 20 22 25 27
+
+words 2
+dictrules 8
+
+replace 00 w v
+replace 00 T z
+replace 00 D d

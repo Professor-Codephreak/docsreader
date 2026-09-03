@@ -258,6 +258,8 @@
       '<button type="button" data-a="close" title="hide the panel (it does not stop the reading)">&#10005;</button></div>' +
       '<div class="dvr-body">' +
       '<div class="dvr-line"><i></i></div>' +
+      '<div class="dvr-three" data-a="three" aria-live="off" aria-hidden="true">' +
+      '<span class="p"></span><span class="c"></span><span class="n"></span></div>' +
       '<div class="dvr-row">' +
       '<button type="button" data-a="prev" title="previous block">&#9198;</button>' +
       '<button type="button" class="dvr-play" data-a="play" title="play / pause">&#9654;</button>' +
@@ -447,9 +449,30 @@
       }
     }
     function unlight() {
+      three('', '', '');
       clearWord();
       if (litBlock) litBlock.classList.remove('dv-reading');
       litBlock = null;
+    }
+    // THE THREE-WORD VIEW is driven by the same boundary event that lights the
+    // page, so it can never disagree with it — there is one source of truth for
+    // "which word is being said" and both surfaces read it.
+    var threeEl = null;
+    function three(prev, cur, next) {
+      if (!threeEl) threeEl = pnl.querySelector('[data-a="three"]');
+      if (!threeEl) return;
+      threeEl.querySelector('.p').textContent = prev || '';
+      threeEl.querySelector('.c').textContent = cur || '';
+      threeEl.querySelector('.n').textContent = next || '';
+      threeEl.setAttribute('aria-hidden', cur ? 'false' : 'true');
+    }
+    // Neighbours come from the sentence being spoken, not from the page: the page
+    // has markup between words and the sentence is exactly what was handed to the
+    // synthesiser, so charIndex indexes into it directly.
+    function neighbours(sentence, charIndex, len) {
+      var before = sentence.slice(0, charIndex).split(/\s+/).filter(Boolean);
+      var after = sentence.slice(charIndex + (len || 0)).split(/\s+/).filter(Boolean);
+      return [before.length ? before[before.length - 1] : '', after.length ? after[0] : ''];
     }
     // the current word, marked in place — from the synthesiser's own boundary events
     function markWord(node, sentence, charIndex, len) {
@@ -458,6 +481,11 @@
       var word = sentence.slice(charIndex, charIndex + (len || 0));
       if (!word) word = (sentence.slice(charIndex).split(/\s/)[0] || '');
       word = word.replace(/^[^\wÀ-ɏ]+|[^\wÀ-ɏ]+$/g, '');
+      // the strip updates even for the short words the page-marking skips: "a"
+      // and "is" are still where you are, and a reading finger that stalls on
+      // them is worse than one that does not
+      var nb = neighbours(sentence, charIndex, len);
+      three(nb[0], word || sentence.slice(charIndex).split(/\s/)[0] || '', nb[1]);
       if (word.length < 2) return;
       try {
         var walker = doc.createTreeWalker(node, global.NodeFilter.SHOW_TEXT, null);

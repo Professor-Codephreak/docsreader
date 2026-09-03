@@ -1,0 +1,64 @@
+language variant
+language en-zen
+name zen
+gender male 40
+
+// ZEN — the calm one.
+//
+// The ACCENT is not in this file: it is voices/en-zen, because espeak-ng
+// silently ignores `replace` inside a !v/ variant and only a full voice file may
+// redefine a phoneme. What is here is the body — and the body's whole job is to
+// be unhurried without being sleepy.
+
+// A NARROW BAND, LOW IN IT. Mid-low and almost level. Calm is not depth and it is
+// not slowness; it is the ABSENCE OF URGENCY, and urgency in a voice is pitch
+// movement. A range of 26 is enough to sound alive and far too little to sound
+// hurried.
+pitch 104 130
+
+// Warm, and deliberately short of brilliance. The peak sits at 900 Hz — low
+// enough to feel like chest rather than mouth — and everything above 2.5 kHz is
+// gently reduced. Sibilance is what makes a voice feel tense, so there is very
+// little of it here. The 1.8 kHz point is kept up because that is intelligibility
+// and calm is no excuse for mumbling.
+tone 260 190 900 235 1800 175 2500 120 3600 70
+
+// An open, relaxed tract: F1 and F2 are broad rather than peaked, which is what
+// an unconstricted throat measures like. Nothing above F5 is doing much work.
+formant 0 100 124 128
+formant 1 104 122 126
+formant 2 106 116 118
+formant 3 104 108 104
+formant 4 100 100  86
+formant 5  94  92  66
+formant 6  86  84  44
+formant 7  80  78  30
+formant 8  76  74  22
+
+// BREATH IS THE CALM. An unpressed fold with air moving past it is the sound of
+// someone who is not straining, and there is no faster way to tell a listener
+// that nothing is wrong. voicing is deliberately below the commanding voices
+// (leader 96, overlord 94) — this voice is not holding anything.
+breath  2 3 4 4 4 4 3 2
+breathw 110 145 160 160 160 160 145 115
+voicing 68
+roughness 0
+flutter 1
+
+// Consonants softened. Every other voice in this cast pushes them up for
+// authority; this one lets them settle, because hard consonants read as
+// insistence. It stays well clear of mumbling — the tone curve holds 1.8 kHz up
+// for exactly that reason.
+consonants 70 62
+
+// A large, soft, quiet space. Long enough to suggest a room with air in it,
+// quiet enough that it never becomes a hall you are being addressed across.
+echo 130 8
+
+// NOTHING INSISTS.
+// intonation 1 keeps the full natural melody — this voice is not withholding, it
+// is simply not pushing. Stress arrives as a small pitch movement rather than as
+// loudness, which is the gentler of the two and the one that does not startle.
+intonation 1
+stressAmp   14 14 15 15 16 16 17 18
+stressAdd    0  4 10 16 22 28 36  44
