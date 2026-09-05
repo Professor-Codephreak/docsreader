@@ -37,6 +37,17 @@
  *
  * It is inert on anything that is not a single article, and it degrades to
  * nothing if the synthesiser is missing.
+ *
+ * TRYING IT ON ONE ARTICLE FIRST. The widget is site-wide -- that is the whole
+ * point of it -- but the first install of anything on somebody's live site
+ * should not be site-wide. Declare an allowlist of post ids BEFORE the script
+ * loads and it boots on those and stays inert everywhere else:
+ *
+ *   <script>window.WP_READER_ONLY = [1493];</script>
+ *
+ * Delete that line to go site-wide. The default, with nothing declared, is
+ * every single article -- the allowlist is an opt-in restriction, not a
+ * requirement, so forgetting it cannot silently disable the reader.
  */
 (function (global) {
   'use strict';
@@ -87,9 +98,30 @@
     });
   }
 
+  // Which post is this? WordPress puts it on the body as `postid-N` on single
+  // articles; there is nothing to read on a page that has no such class.
+  function postId() {
+    var m = (doc.body && doc.body.className || '').match(/postid-(\d+)/);
+    return m ? m[1] : null;
+  }
+
+  // An allowlist restricts the reader to named posts. Absent or empty means no
+  // restriction, so the ordinary site-wide install needs no configuration.
+  function allowed() {
+    var only = global.WP_READER_ONLY;
+    if (!only || !only.length) return true;
+    var id = postId();
+    if (!id) return false;
+    for (var i = 0; i < only.length; i++) {
+      if (String(only[i]) === id) return true;
+    }
+    return false;
+  }
+
   function boot() {
     if (!global.DVDocReader || !global.DVVoices) return;
     if (!isSingle()) return;
+    if (!allowed()) return;
     var content = first(CONTENT);
     if (!content) return;
     prune(content);
@@ -110,7 +142,7 @@
 
     var reader = global.DVDocReader.mount({
       root: host,
-      doc: (doc.body.className.match(/postid-(\d+)/) || [])[1] || 'post',
+      doc: postId() || 'post',
       label: (doc.title || 'article').split('|')[0].trim().slice(0, 40)
     });
     if (reader) global.wordpressReader = reader;
@@ -123,5 +155,8 @@
     if (global.DVVoices) global.DVVoices.ready().then(boot);
     else boot();
   }
-  global.WordPressReader = { boot: boot, isSingle: isSingle, contentSelectors: CONTENT };
+  global.WordPressReader = {
+    boot: boot, isSingle: isSingle, allowed: allowed, postId: postId,
+    contentSelectors: CONTENT
+  };
 })(typeof window !== 'undefined' ? window : this);

@@ -59,12 +59,26 @@ same on every one of them.
 [`/docsplayer/store`](https://deltaverse.pythai.net/docsplayer/store) reports how
 much of the 300 MB budget is spent and what gets pruned next.
 
-### Not live anywhere yet
+### Running inside WordPress
 
-**[wordpress-reader.js](https://deltaverse.pythai.net/engine/ngn/wordpress-reader.js)**
-is built, served, and CORS-open for any WordPress that wants it — but it is not
-installed on a live site. Installing it means adding a widget to somebody's
-footer, which is their call and not ours.
+**[Three readers, one voice, and the wall that made a fourth](https://rage.pythai.net/three-readers-one-voice/)**
+is `wordpress.reader` in production, on a WordPress install the reader could not
+fetch from — the article describes the four surfaces and carries a LISTEN button
+put there by the thing it describes.
+
+It is installed on that one post rather than the whole site, which the script
+supports directly: declare the posts before it loads and it stays inert
+everywhere else.
+
+```html
+<script>window.WP_READER_ONLY = [1469];</script>
+<script src="https://deltaverse.pythai.net/engine/ngn/voices.js"></script>
+<script src="https://deltaverse.pythai.net/engine/ngn/doc-reader.js"></script>
+<script src="https://deltaverse.pythai.net/engine/ngn/wordpress-reader.js"></script>
+```
+
+Drop the first line and every article gets a button. Nothing declared means no
+restriction, so forgetting the allowlist cannot quietly switch the reader off.
 
 ```
 deltaverse/   the DeltaVerse reader — voice registry, panel, audio store, renderers

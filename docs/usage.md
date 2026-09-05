@@ -69,6 +69,39 @@ and it mangles `<script>`. The widget region is the only reliable sitewide route
 It is inert on anything that is not a single article, so archives, the home page
 and search results are left alone.
 
+### Try it on one article first
+
+The widget is sitewide, but a first install does not have to be. Name the posts
+before the scripts load and the reader boots on those and nowhere else:
+
+```html
+<script>window.WP_READER_ONLY = [1469];</script>
+```
+
+Delete that line to go sitewide. An absent or empty list means no restriction, so
+forgetting it cannot silently disable the reader — the restriction is opt-in.
+
+Live example: [rage.pythai.net/three-readers-one-voice](https://rage.pythai.net/three-readers-one-voice/),
+scoped to exactly that post.
+
+### Three things the first real install cost us
+
+**Not every registered footer region renders.** `footer-1` through `footer-4`
+all reported `status: active` over REST, and only `footer-1` was ever emitted by
+the theme. A widget placed in `footer-2` verified perfectly and appeared on no
+page at all. Check a rendered page, not the sidebar's own status.
+
+**Read widgets with `?context=edit` or they all look empty.** The default
+representation returns `rendered` and no `instance`, so the content field is
+absent rather than wrong. Reading a live 11 KB widget the default way reported
+`0 bytes` while the site was happily serving it.
+
+**Placing a widget blanks it.** Creating it, placing it and writing the content
+are three separate calls in that order, and the middle one wipes what the first
+one stored. Every one of those steps answers `200`. There is an installer that
+does the dance and verifies the result in mindX at
+`agents/wordpress_agent/scripts/footer_widget.py`.
+
 ## Rendering audio ahead
 
 A page that is rendered ahead plays instantly, seeks, and can be downloaded —
