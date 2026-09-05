@@ -6,6 +6,8 @@
   "voices": [
     {
       "id": "neural",
+      "immutable": true,
+      "_immutable": "IMMUTABLE \u2014 a kept voice. The playdocs page is rendered in this voice and those recordings are kept for good (services/docsplayer: STORE/.keep), and a recording is only the voice it was made in while the voice stays what it was. Retune here and every kept recording is of a voice that no longer exists. Derive a new voice instead.",
       "label": "NEURAL",
       "title": "neural (piper alan) — southern English, the default",
       "engine": "auto",
@@ -18,6 +20,8 @@
     },
     {
       "id": "jaimla",
+      "immutable": true,
+      "_immutable": "IMMUTABLE \u2014 a kept voice. The playdocs page is rendered in this voice and those recordings are kept for good (services/docsplayer: STORE/.keep), and a recording is only the voice it was made in while the voice stays what it was. Retune here and every kept recording is of a voice that no longer exists. Derive a new voice instead.",
       "label": "JAIMLA",
       "title": "jaimla — neural (piper jenny), British female, unhurried",
       "engine": "piper",
@@ -31,6 +35,8 @@
     },
     {
       "id": "leaderofearth",
+      "immutable": true,
+      "_immutable": "IMMUTABLE \u2014 a kept voice. The playdocs page is rendered in this voice and those recordings are kept for good (services/docsplayer: STORE/.keep), and a recording is only the voice it was made in while the voice stays what it was. Retune here and every kept recording is of a voice that no longer exists. Derive a new voice instead.",
       "label": "LEADER",
       "title": "leaderofearth — one accent assembled from eight world Englishes (royal, US, Australian, Indian, Mexican, Brazilian, Brooklyn, Slavic); deepest and slowest voice in the set",
       "engine": "layered",
