@@ -49,7 +49,7 @@ start, ceil at the end, and the cut recorded on the clip's path.
 
 ```
 audbol/          the package: fixed · read · measure · chart · report · serve · cli
-substrate/       the playdocs substrate, saved (PROVENANCE.md has the hashes)
+substrate/       the playdocs substrate, saved byte for byte (PROVENANCE.md) + template.html and TEMPLATE.md — `python -m audbol template DIR` copies it out to expand from
 web/index.html   the instrument page `serve` opens
 tests/           pytest; a synthesised tone+silence WAV is the fixture
 ```

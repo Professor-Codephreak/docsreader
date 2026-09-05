@@ -6,6 +6,7 @@
     python -m audbol compare A.json B.json
     python -m audbol bands   FILE
     python -m audbol serve   FILE [--host 127.0.0.1] [--port 8770]
+    python -m audbol template DIR [--force]
 """
 from __future__ import annotations
 
@@ -90,6 +91,26 @@ def _serve(a):
     return serve(a.file, a.host, a.port)
 
 
+def _template(a):
+    """Copy the substrate out as a starting point: the five modules, the template
+    page, and the two notes. Refuses to overwrite, because a copy someone has
+    started extending is exactly the file this must not replace."""
+    import shutil
+    src = Path(__file__).resolve().parent.parent / "substrate"
+    dst = Path(a.dir)
+    files = sorted(src.glob("*.js")) + [src / "template.html", src / "PROVENANCE.md", src / "TEMPLATE.md"]
+    dst.mkdir(parents=True, exist_ok=True)
+    clash = [f.name for f in files if (dst / f.name).exists()]
+    if clash and not a.force:
+        print("refusing to overwrite %s in %s (use --force)" % (", ".join(clash), dst))
+        return 1
+    for f in files:
+        shutil.copyfile(f, dst / f.name)
+        print("  %s" % (dst / f.name))
+    print("open %s from disk, pick a file, press PLAY; TEMPLATE.md says where to extend" % (dst / "template.html"))
+    return 0
+
+
 def main(argv=None):
     p = argparse.ArgumentParser("audbol", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -114,6 +135,10 @@ def main(argv=None):
     s = sub.add_parser("serve", help="the instrument: the substrate over the file, selections re-measured on the host")
     s.add_argument("file"); s.add_argument("--host", default="127.0.0.1"); s.add_argument("--port", type=int, default=8770)
     s.set_defaults(fn=_serve)
+
+    t = sub.add_parser("template", help="copy the substrate + template page out as a starting point")
+    t.add_argument("dir"); t.add_argument("--force", action="store_true")
+    t.set_defaults(fn=_template)
 
     a = p.parse_args(argv)
     return a.fn(a)
