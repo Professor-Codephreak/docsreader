@@ -122,7 +122,22 @@ button.vpick .car{color:var(--quiet);font-size:9px}
    first third of every recording. */
 .wrap .lit{background:rgba(var(--cy),.10);box-shadow:-10px 0 0 rgba(var(--cy),.10),10px 0 0 rgba(var(--cy),.10);
   border-radius:2px}
-@media (prefers-reduced-motion:reduce){#scope{transition:none}}
+/* ── the render, shown as it happens ──────────────────────────────────────
+   The bar is blocks done over blocks total, reported by the host — not a timer
+   dressed as a bar. The block being synthesised is marked in the document
+   itself, so the work is visible where the words are. */
+.prog{display:flex;align-items:center;gap:12px;margin:0 0 10px;font-family:var(--mono);font-size:11px;color:var(--quiet)}
+.prog[hidden]{display:none}
+.prog .pbar{flex:0 0 220px;height:8px;border-radius:5px;background:rgba(255,255,255,.08);overflow:hidden;
+  border:1px solid rgba(var(--am),.35)}
+.prog .pbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,rgb(var(--am)),rgb(var(--cy)));
+  transition:width .25s ease}
+.prog .pbar.enc i{background:repeating-linear-gradient(90deg,rgb(var(--cy)) 0 8px,rgba(var(--cy),.45) 8px 16px)}
+.prog .ptxt b{color:#e6edf3;font-weight:400}
+.wrap .rendering{box-shadow:-10px 0 0 rgba(var(--am),.18),10px 0 0 rgba(var(--am),.18);background:rgba(var(--am),.12);
+  border-radius:2px;outline:1px dashed rgba(var(--am),.55);outline-offset:6px}
+.wrap .rendered{box-shadow:-10px 0 0 rgba(var(--cy),.05),10px 0 0 rgba(var(--cy),.05);background:rgba(var(--cy),.04);border-radius:2px}
+@media (prefers-reduced-motion:reduce){#scope{transition:none}.prog .pbar i{transition:none}}
 </style>
 
 <canvas id="scope" aria-hidden="true" data-noread></canvas>
@@ -133,7 +148,8 @@ button.vpick .car{color:var(--quiet);font-size:9px}
 
 <div class="bar" data-noread>
   <button id="play" type="button">▶ READ THIS PAGE</button>
-  <button id="vpick" class="vpick" type="button" aria-expanded="false" aria-controls="cast">
+  <button id="vpick" class="vpick" type="button" aria-expanded="false" aria-controls="cast"
+    title="choose the voice — the reading continues from where it is">
     <span class="car">VOICE</span><span class="who">…</span><span class="tm"></span></button>
   <audio id="au" controls preload="none"></audio>
   <a id="dl" class="dl" hidden download>⇣ KEEP</a>
@@ -144,6 +160,7 @@ button.vpick .car{color:var(--quiet);font-size:9px}
 <div id="cast" hidden data-noread></div>
 
 <p class="status" id="status" role="status" aria-live="polite"></p>
+<div class="prog" id="prog" hidden data-noread><div class="pbar"><i id="pfill"></i></div><span class="ptxt" id="ptxt"></span></div>
 <div class="meter" id="meter" hidden data-noread></div>
 <p class="stored" id="stored" data-noread></p>
 
@@ -236,6 +253,7 @@ recording of the first.</p>
   var ST = document.getElementById('status'), STORED = document.getElementById('stored');
   var METER = document.getElementById('meter'), BODY = document.getElementById('readme');
   var SCOPE = document.getElementById('scope');
+  var PROG = document.getElementById('prog'), PFILL = document.getElementById('pfill'), PTXT = document.getElementById('ptxt');
   var blocks = [], manifest = null, reader = null, field = null;
   var cast = [], voiceId = 'neural', speeds = null;
   var q = new URLSearchParams(location.search);
@@ -477,6 +495,21 @@ recording of the first.</p>
     return (p && p.name === v.name) ? p : null;
   }
 
+  // SAVED IS DECIDED BY TWO SOURCES, AND NEITHER QUIETLY WINS. The render lane
+  // sends `template: true` only for the voices its registry's `templates` map has
+  // written down (neural today); for the rest it sends nothing rather than false.
+  // The browser lane (engine/ngn/voices.js) names neural AND jaimla as saved. So a
+  // voice is SAVED here when the registry says so, or when the registry is silent
+  // and the browser lane says so — otherwise the realm's female voice sits in the
+  // crowd while the prose above says she is at the top.
+  function saved(v) {
+    if (v.template === true) return true;
+    if (v.template == null && window.DVVoices && DVVoices.isTemplate) {
+      try { return !!DVVoices.isTemplate(v.id); } catch (e) {}
+    }
+    return false;
+  }
+
   function buildCast() {
     var groups = [
       { key: 'saved', title: 'SAVED', why: 'not edited — everything else in the realm is measured against one of these two' },
@@ -486,7 +519,7 @@ recording of the first.</p>
     var rows = { saved: [], cast: [], later: [] };
     cast.forEach(function (v) {
       if (faceOf(v)) return;                                  // drawn as a toggle on its parent
-      rows[v.disabled ? 'later' : v.template ? 'saved' : 'cast'].push(v);
+      rows[v.disabled ? 'later' : saved(v) ? 'saved' : 'cast'].push(v);
     });
 
     var html = '';
@@ -496,8 +529,8 @@ recording of the first.</p>
       rows[g.key].forEach(function (v) {
         var faces = cast.filter(function (x) { return faceOf(x) === v; });
         var on = v.id === voiceId || faces.some(function (f) { return f.id === voiceId; });
-        var cls = 'v' + (v.template ? ' tmpl' : '') + (v.disabled ? ' off' : '') + (on ? ' sel' : '');
-        var tag = v.template ? '◉ saved' : v.disabled ? 'not yet' : v.engine;
+        var cls = 'v' + (saved(v) ? ' tmpl' : '') + (v.disabled ? ' off' : '') + (on ? ' sel' : '');
+        var tag = saved(v) ? '◉ saved' : v.disabled ? 'not yet' : v.engine;
         var mt = [];
         if (v.model) mt.push(v.model);
         if (v.accent) mt.push(v.accent);
@@ -521,7 +554,8 @@ recording of the first.</p>
       'file on the host, and your own browser can speak them live through the LISTEN panel. The rest of the ' +
       'cast is render-only: espeak-ng and piper voices that no browser has. Picking one here sets it in the ' +
       'panel too wherever the two lanes have the same voice, so the page never has two answers to who is ' +
-      'speaking.</div>';
+      'speaking. Change voice while it is reading and it <b>continues from the same block</b> — the old voice ' +
+      'keeps going until the new file is in hand.</div>';
     CAST.innerHTML = html;
     paintPick();
   }
@@ -529,7 +563,7 @@ recording of the first.</p>
   function paintPick() {
     var v = voice(voiceId);
     VPICK.querySelector('.who').textContent = v ? v.name : voiceId;
-    VPICK.querySelector('.tm').textContent = v && v.template ? '◉' : '';
+    VPICK.querySelector('.tm').textContent = v && saved(v) ? '◉' : '';
     [].forEach.call(CAST.querySelectorAll('label.v'), function (l) {
       var id = l.dataset.id;
       var faces = cast.filter(function (x) { var p = faceOf(x); return p && p.id === id; });
@@ -540,10 +574,61 @@ recording of the first.</p>
     });
   }
 
+  // ── where the reading is, in a form that survives a change of voice ──
+  // A voice is a different file with a different length, so a timestamp does not
+  // carry across. What does carry is the BLOCK you are hearing and how far into it
+  // you are: the marks say where every block starts in each file, so the same
+  // block can be found again in the other voice. Without marks (a remembered
+  // recording made before marks were kept) the fraction of the whole is used —
+  // right to within a paragraph, and the only figure the file itself supports.
+  function position() {
+    var t = AU.currentTime || 0, secs = (manifest && manifest.seconds) || 0;
+    var pos = { t: t, frac: secs ? Math.max(0, Math.min(1, t / secs)) : 0, block: null, into: 0 };
+    var m = manifest && manifest.marks;
+    if (m && m.length && m.length === blocks.length) {
+      var at = 0;
+      for (var i = 0; i < m.length; i++) { if (m[i].at <= t) at = i; else break; }
+      var a = m[at].at, b = at + 1 < m.length ? m[at + 1].at : secs;
+      pos.block = m[at].block;
+      pos.into = b > a ? Math.max(0, Math.min(1, (t - a) / (b - a))) : 0;
+    }
+    return pos;
+  }
+  function resumeAt(pos, andPlay) {
+    var secs = (manifest && manifest.seconds) || 0, m = manifest && manifest.marks, target = null;
+    if (pos.block != null && m && m.length && m.length === blocks.length) {
+      for (var i = 0; i < m.length; i++) {
+        if (m[i].block === pos.block) {
+          var a = m[i].at, b = i + 1 < m.length ? m[i + 1].at : secs;
+          target = a + pos.into * Math.max(0, b - a);
+          break;
+        }
+      }
+    }
+    if (target == null) target = pos.frac * secs;
+    target = Math.max(0, target - 0.15);                       // land a breath before the word, never after it
+    // Setting currentTime on an element that has nothing loaded yet records the
+    // default start position and the seek happens when the metadata arrives; it is
+    // re-asserted then, because not every browser honours the early write.
+    function seek() { try { AU.currentTime = target; } catch (e) {} }
+    seek();
+    AU.addEventListener('loadedmetadata', function once() {
+      AU.removeEventListener('loadedmetadata', once);
+      if (Math.abs((AU.currentTime || 0) - target) > 0.5) seek();
+    });
+    if (andPlay) start(); else { follow(); paint(); }
+  }
+
   function choose(id) {
     if (!id || id === voiceId) return;
     var v = voice(id);
     if (!v || v.disabled) return;
+    // WHERE THE READING IS, TAKEN BEFORE ANYTHING CHANGES — and the current voice
+    // is NOT stopped. A stored recording swaps in at once; a first render takes
+    // seconds, and a listener who changed their mind should not sit in silence
+    // for them. The old voice keeps reading until the new file is in hand, and
+    // the new one picks up the same block.
+    var was = !AU.paused && !!AU.src, pos = position(), prev = voiceId;
     voiceId = id;
     paintPick();
     meter(null);
@@ -552,9 +637,16 @@ recording of the first.</p>
     // overlap they are kept in step; where they do not, the panel keeps what it had,
     // because there is no browser voice called ANCIENT to switch it to.
     try { if (reader && window.DVVoices && DVVoices.get(id).id === id) reader.voice(id); } catch (e) {}
-    if (lit) { lit.classList.remove('lit'); lit = null; }
-    AU.removeAttribute('src'); DL.hidden = true; manifest = null; paint();
-    render(id, false);
+    render(id, false, function () {
+      if (voiceId !== id) return;                               // superseded by a later choice
+      if (lit) { lit.classList.remove('lit'); lit = null; }
+      resumeAt(pos, was);
+      if (was) say('continuing in <b>' + esc((voice(id) || {}).name || id) + '</b> from where the reading was');
+    }, function () {
+      // the render failed: the old voice is still reading, and the picker says so
+      if (voiceId !== id) return;
+      voiceId = prev; paintPick(); meter(manifest);
+    });
   }
 
   VPICK.addEventListener('click', function () {
@@ -631,22 +723,94 @@ recording of the first.</p>
     }
   }
 
-  function render(voiceKey, autoplay) {
+  // ── the render, watched ────────────────────────────────────────────────
+  // /docsplayer/render is one POST that answers at the end. Given a job id it
+  // keeps a ledger, and /docsplayer/progress?job= says what has ACTUALLY been
+  // done: the block being synthesised, blocks done, seconds of audio so far and
+  // the seconds it took — a realtime factor measured on this render and an
+  // estimate that moves with every block. A host without the route answers 404
+  // and the bar says so rather than inventing motion.
+  function newJob() {
+    var a = new Uint8Array(12), h = '';
+    try { crypto.getRandomValues(a); } catch (e) { for (var i = 0; i < a.length; i++) a[i] = Math.random() * 256; }
+    for (var j = 0; j < a.length; j++) h += ('0' + a[j].toString(16)).slice(-2);
+    return 'dr' + h;
+  }
+  var renderMark = { at: -1 };
+  function markBlock(i) {
+    if (i === renderMark.at) return;
+    if (renderMark.at >= 0 && blocks[renderMark.at] && blocks[renderMark.at].node) {
+      blocks[renderMark.at].node.classList.remove('rendering');
+      blocks[renderMark.at].node.classList.add('rendered');
+    }
+    renderMark.at = i;
+    if (i >= 0 && blocks[i] && blocks[i].node) blocks[i].node.classList.add('rendering');
+  }
+  function clearRenderMarks() {
+    for (var i = 0; i < blocks.length; i++) if (blocks[i].node) blocks[i].node.classList.remove('rendering', 'rendered');
+    renderMark.at = -1;
+  }
+  function paintProgress(d, elapsedLocal) {
+    var total = d.blocksTotal || blocks.length || 1, done = d.blocksDone || 0;
+    var pct = d.state === 'done' ? 100 : d.state === 'encoding' ? 100 : Math.round(100 * done / total);
+    PFILL.style.width = pct + '%';
+    PROG.querySelector('.pbar').classList.toggle('enc', d.state === 'encoding');
+    var t = '';
+    if (d.state === 'queued') t = 'waiting for the renderer — another render is running · ' + d.elapsed.toFixed(0) + ' s';
+    else if (d.state === 'synthesising') {
+      t = '<b>block ' + Math.min(total, done + 1) + '</b> of ' + total + ' · <b>' + (d.audioSeconds || 0).toFixed(1) + ' s</b> of audio in ' +
+          (d.synthSeconds || 0).toFixed(1) + ' s' + (d.rtf ? ' · <b>' + d.rtf.toFixed(2) + '×</b> realtime, measured' : '') +
+          (d.eta != null ? ' · about <b>' + mmss(d.eta) + '</b> left' : ' · estimate after the first block');
+      markBlock(d.block == null ? -1 : d.block);
+    } else if (d.state === 'encoding') {
+      t = 'synthesised <b>' + (d.audioSeconds || 0).toFixed(1) + ' s</b> in ' + (d.synthSeconds || 0).toFixed(1) + ' s (' + (d.rtf || 0).toFixed(2) + '×) · encoding <b>' + (d.codec || 'opus') + '</b>';
+      markBlock(-1); for (var i = 0; i < blocks.length; i++) if (blocks[i].node) blocks[i].node.classList.add('rendered');
+    } else if (d.state === 'done') {
+      t = (d.cached ? 'already rendered — served from the store' : 'done: <b>' + (d.audioSeconds || 0).toFixed(1) + ' s</b> in ' + (d.renderSeconds || d.synthSeconds || 0).toFixed(1) + ' s · ' + (d.realtimeFactor || d.rtf || 0) + '× realtime');
+    } else if (d.state === 'failed') t = 'failed: ' + esc(d.error || 'no reason given');
+    else if (d.state === 'unreported') t = 'rendering… this host does not report progress (' + elapsedLocal.toFixed(0) + ' s so far)';
+    PTXT.innerHTML = t;
+  }
+  function watchProgress(job) {
+    var t0 = Date.now(), stopped = false, timer = 0, misses = 0;
+    PROG.hidden = false; PFILL.style.width = '0%'; PTXT.textContent = 'asking the host how far it has got…';
+    function tick() {
+      if (stopped) return;
+      fetch('/docsplayer/progress?job=' + encodeURIComponent(job), { cache: 'no-store' }).then(function (r) {
+        if (r.status === 404) { misses++; if (misses > 4) paintProgress({ state: 'unreported' }, (Date.now() - t0) / 1000); return null; }
+        return r.json();
+      }).then(function (d) { if (d && !stopped) paintProgress(d, (Date.now() - t0) / 1000); })
+        .catch(function () {})
+        .then(function () { if (!stopped) timer = setTimeout(tick, 450); });
+    }
+    tick();
+    return {
+      stop: function (final) {
+        stopped = true; clearTimeout(timer);
+        if (final) paintProgress(final, (Date.now() - t0) / 1000);
+        setTimeout(function () { PROG.hidden = true; clearRenderMarks(); }, final && final.state === 'done' ? 2500 : 0);
+      }
+    };
+  }
+
+  function render(voiceKey, autoplay, then, onfail) {
     var mem = remembered(voiceKey);
-    if (mem) { say('stored recording found — playing the file'); attach(mem, autoplay); return; }
+    if (mem) { say('stored recording found — playing the file'); attach(mem, autoplay); if (then) then(mem); return; }
     if (!blocks.length) blocks = collect();
-    if (!blocks.length) { say('nothing to read', true); return; }
+    if (!blocks.length) { say('nothing to read', true); if (onfail) onfail(); return; }
     var v = voice(voiceKey);
-    if (v && v.disabled) { say(esc(v.name) + ' is not available yet', true); return; }
+    if (v && v.disabled) { say(esc(v.name) + ' is not available yet', true); if (onfail) onfail(); return; }
     PLAY.disabled = true;
-    var est = v && v.rtf ? ' — about ' + mmss((words() / 2.75) / v.rtf) + ' at ' + v.rtf + '× realtime' : '';
+    var est = v && v.rtf ? ' — about ' + mmss((words() / 2.75) / v.rtf) + ' at ' + v.rtf + '× realtime, declared' : '';
     say('rendering ' + blocks.length + ' blocks once' + est + '; every play after this is the file');
+    var job = newJob(), watch = watchProgress(job);
     fetch('/docsplayer/render', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: location.href, title: 'docsreader', voice: voiceKey, blocks: texts() })
+      body: JSON.stringify({ url: location.href, title: 'docsreader', voice: voiceKey, blocks: texts(), job: job })
     }).then(function (r) {
       return r.json().then(function (j) { if (!r.ok) throw new Error(j.detail || ('HTTP ' + r.status)); return j; });
     }).then(function (m) {
+      watch.stop({ state: 'done', cached: !!m.cached, audioSeconds: m.seconds, renderSeconds: m.renderSeconds, realtimeFactor: m.realtimeFactor });
       remember(voiceKey, m);
       say((m.cached ? 'already rendered — ' : 'rendered in ' + m.renderSeconds + 's — ') +
           'kept as a file, ' + mmss(m.seconds) + ' · ' + kb(m.bytes));
@@ -654,8 +818,11 @@ recording of the first.</p>
                voiceName: m.voiceName, key: m.key, engine: m.engine, engineNote: m.engineNote,
                blocks: m.blocks, words: m.words, sampleRate: m.sampleRate,
                realtimeFactor: m.realtimeFactor, renderSeconds: m.renderSeconds }, autoplay);
+      if (then) then(m);
     }).catch(function (e) {
+      watch.stop({ state: 'failed', error: String((e && e.message) || e) });
       say(String((e && e.message) || e), true);
+      if (onfail) onfail(e);
     }).then(function () { PLAY.disabled = false; });
   }
 

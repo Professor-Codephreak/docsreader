@@ -17,6 +17,67 @@
       "note": "Sends engine=auto and NO voice parameter — byte-identical to the pre-picker request. engine=auto resolves through READER_ORDER to piper, so the DEFAULT IS THE NEURAL VOICE. This entry is the one that must never move."
     },
     {
+      "id": "jaimla",
+      "label": "JAIMLA",
+      "title": "jaimla — neural (piper jenny), British female, unhurried",
+      "engine": "piper",
+      "voice": "en_GB-jenny_dioco-medium",
+      "tier": "participant",
+      "accent": "British",
+      "gender": "female",
+      "rate": 168,
+      "measured": "f0 182 Hz · centroid 2783 — the brightest voice in the set · ~6x realtime",
+      "note": "FEMALE, PROVEN NOT ASSERTED. Every male voice here measures below 150 Hz and every female above 180; Jaimla is the only female NEURAL voice and the only en_GB female on the host. It was en_US-lessac-medium (f0 187 but centroid 1534 — dark enough to read ambiguous through a phone speaker); jenny_dioco keeps the pitch and adds the brightness that actually carries gender, and moves her off the American accent so no two entries share one. rate 168 is barely under nominal, because softness here is unhurriedness, not slowness. The breath-and-fifth formant variant remains as en-gb-x-rp+jaimla for anyone who wants it."
+    },
+    {
+      "id": "leaderofearth",
+      "label": "LEADER",
+      "title": "leaderofearth — one accent assembled from eight world Englishes (royal, US, Australian, Indian, Mexican, Brazilian, Brooklyn, Slavic); deepest and slowest voice in the set",
+      "engine": "layered",
+      "voice": "leader",
+     "layers": [
+      {"role": "body", "engine": "piper", "voice": "en_GB-alan-medium",
+       "speed": 0.92, "pitch": 0.88, "gain": 1.0,
+       "why": "the reference, lower and unhurried — and the ONLY voice here"}
+     ],
+     "eq": [
+      [60, 170, 2.5],
+      [260, 520, -3.5],
+      [1900, 4200, 4.0],
+      [5200, 11000, -2.0]
+     ],
+     "_eq": "A BROADCAST DESK, NOT A SECOND SPEAKER. piper gives a length-scale and nothing else, so a derived voice can only be faster, slower, higher or lower — enough to be DIFFERENT, not enough to be AUTHORITATIVE, which is why the first LEADER reached for another voice to supply the character. A second voice is not character, it is company. These four bands are what a desk does to a presenter instead: +2.5 dB of chest under 170 Hz; -3.5 dB at 260-520 Hz, which is the mud that makes a low voice sound heavy rather than deep and is the single most important cut here; +4 dB across 1.9-4.2 kHz, where consonants are told apart, so the words land without the voice getting louder; and -2 dB above 5.2 kHz to keep sibilance off a voice that is now brighter in the mids. One speaker, shaped.",
+     "sentenceSilence": 0.85,
+      "tier": "participant",
+      "accent": "Earth — one accent assembled from royal, US, Australian, Indian, Mexican, Brazilian, Brooklyn and Slavic English, on a Caribbean base",
+      "gender": "male",
+     "sentenceSilence": 0.85,
+      "measured": "f0 117.9 Hz · centroid 1484 · presence 2-5 kHz 23.7% — the deepest voice in the set, and no longer the darkest: presence was 12.4% before the retune",
+      "note": "A LEADER IS ONE VOICE, and it is a SHAPED one. It was the reference with an espeak overtone mixed on, and however that overtone was placed it was a second person — in the intelligibility band it formed words, and outside it it became a drone, which is worse. Two voices saying the same thing is unison, and unison is OVERLORD's idea. So: the reference at pitch 0.88 and speed 0.92 (about 88 Hz against neural's 101, a shade under a tenth slower), with a broadcast EQ instead of a companion, and the 0.85 s pause after every conclusion that makes it deliberate rather than merely slow. It inherits neural's clarity because it IS neural."
+    },
+    {
+      "id": "overlord",
+      "label": "OVERLORD",
+      "title": "overlord — the two saved voices in unison: neural carries the words, jaimla speaks them with him",
+      "engine": "layered",
+      "voice": "overlord",
+      "channels": 1,
+      "sentenceSilence": 0.42,
+      "layers": [
+       {"role": "body", "engine": "piper", "voice": "en_GB-alan-medium", "gain": 1.0,
+        "why": "the reference, never stretched — it is the voice that does not move"},
+       {"role": "unison", "engine": "piper", "voice": "en_GB-jenny_dioco-medium", "speed": 0.96, "gain": 0.62,
+        "anchor": true,
+        "why": "jaimla, fitted to the reference at every phrase boundary — under him, not beside him (0.62)"}
+      ],
+      "tier": "participant",
+      "accent": "Southern English and British female, at once",
+      "gender": "both",
+      "measured": "",
+      "_from": "deltaverse render/render_overlord.py (2026-09-02: \"OVERLORD is two neural voices at once\") — the same recipe, moved into the registry so every surface reads it instead of a copy. The earlier five-band espeak build survives as the en-earth+overlord variant and is not what this entry renders.",
+      "note": "UNISON HAS NO SINGLE OWNER. Two people saying the same words together is what a choir does to a solo line: the pitch stops belonging to a person and starts belonging to the statement. That is the register the realm uses about itself. The two voices do not agree on timing — same model family, same sentence, different durations, and the difference is not constant — so the second is anchored to the first at every phrase boundary rather than stretched once per block, which is exactly the failure LEADER's overtone had. Both layers are piper because two piper voices agree far more closely than piper and espeak do (measured 0.75-1.04 against 1.53-1.81)."
+    },
+    {
       "id": "classic",
      "faceLabel": "H.A.L",
      "_faceLabel": "CLASSIC names the SLOT in the cast; H.A.L names the face speaking from it. The button shows the face, so the second and third presses are visible.",
@@ -58,32 +119,6 @@
       "note": "The voice everyone misremembers as robotic. It is soft, warm and impeccably polite, and that is what makes it frightening \u2014 nothing in the delivery ever acknowledges the situation. breath is generous (he sounds at ease) while flutter and roughness are both ZERO (not one irregular moment, ever): a human voice under stress wavers and this one physically cannot. stressAmp barely moves, so no word is ever leaned on. NOTE: this entry used to be espeak-ng's untouched en-us \u2014 the honest baseline showing what formant synthesis sounds like with nothing done to it. That role is now unoccupied; say so if it is wanted back as its own entry."
     },
     {
-      "id": "leaderofearth",
-      "label": "LEADER",
-      "title": "leaderofearth — one accent assembled from eight world Englishes (royal, US, Australian, Indian, Mexican, Brazilian, Brooklyn, Slavic); deepest and slowest voice in the set",
-      "engine": "layered",
-      "voice": "leader",
-     "layers": [
-      {"role": "body", "engine": "piper", "voice": "en_GB-alan-medium",
-       "speed": 0.92, "pitch": 0.88, "gain": 1.0,
-       "why": "the reference, lower and unhurried — and the ONLY voice here"}
-     ],
-     "eq": [
-      [60, 170, 2.5],
-      [260, 520, -3.5],
-      [1900, 4200, 4.0],
-      [5200, 11000, -2.0]
-     ],
-     "_eq": "A BROADCAST DESK, NOT A SECOND SPEAKER. piper gives a length-scale and nothing else, so a derived voice can only be faster, slower, higher or lower — enough to be DIFFERENT, not enough to be AUTHORITATIVE, which is why the first LEADER reached for another voice to supply the character. A second voice is not character, it is company. These four bands are what a desk does to a presenter instead: +2.5 dB of chest under 170 Hz; -3.5 dB at 260-520 Hz, which is the mud that makes a low voice sound heavy rather than deep and is the single most important cut here; +4 dB across 1.9-4.2 kHz, where consonants are told apart, so the words land without the voice getting louder; and -2 dB above 5.2 kHz to keep sibilance off a voice that is now brighter in the mids. One speaker, shaped.",
-     "sentenceSilence": 0.85,
-      "tier": "participant",
-      "accent": "Earth — one accent assembled from royal, US, Australian, Indian, Mexican, Brazilian, Brooklyn and Slavic English, on a Caribbean base",
-      "gender": "male",
-     "sentenceSilence": 0.85,
-      "measured": "f0 117.9 Hz · centroid 1484 · presence 2-5 kHz 23.7% — the deepest voice in the set, and no longer the darkest: presence was 12.4% before the retune",
-      "note": "A LEADER IS ONE VOICE, and it is a SHAPED one. It was the reference with an espeak overtone mixed on, and however that overtone was placed it was a second person — in the intelligibility band it formed words, and outside it it became a drone, which is worse. Two voices saying the same thing is unison, and unison is OVERLORD's idea. So: the reference at pitch 0.88 and speed 0.92 (about 88 Hz against neural's 101, a shade under a tenth slower), with a broadcast EQ instead of a companion, and the 0.85 s pause after every conclusion that makes it deliberate rather than merely slow. It inherits neural's clarity because it IS neural."
-    },
-    {
       "id": "sagi",
       "label": "sAGI",
       "title": "sAGI — neural (piper northern english male), Northern English, composed and reasoning",
@@ -95,19 +130,6 @@
       "rate": 158,
       "measured": "f0 113 Hz · centroid 2249 · ~6x realtime",
       "note": "NEURAL, AND NO LONGER A COPY. This was piper alan at rate 158 — the SAME MODEL as NEURAL, distinguished only by pace, which is why the picker's two neural entries sounded like one voice at two speeds. It now runs its own model: en_GB-northern_english_male-medium, 15 Hz above alan and audibly darker (centroid 2249 vs 2712), a different region of England entirely. rate 158 keeps the composed, reasoning-aloud pace that separates sAGI from LEADER's pronouncing."
-    },
-    {
-      "id": "jaimla",
-      "label": "JAIMLA",
-      "title": "jaimla — neural (piper jenny), British female, unhurried",
-      "engine": "piper",
-      "voice": "en_GB-jenny_dioco-medium",
-      "tier": "participant",
-      "accent": "British",
-      "gender": "female",
-      "rate": 168,
-      "measured": "f0 182 Hz · centroid 2783 — the brightest voice in the set · ~6x realtime",
-      "note": "FEMALE, PROVEN NOT ASSERTED. Every male voice here measures below 150 Hz and every female above 180; Jaimla is the only female NEURAL voice and the only en_GB female on the host. It was en_US-lessac-medium (f0 187 but centroid 1534 — dark enough to read ambiguous through a phone speaker); jenny_dioco keeps the pitch and adds the brightness that actually carries gender, and moves her off the American accent so no two entries share one. rate 168 is barely under nominal, because softness here is unhurriedness, not slowness. The breath-and-fifth formant variant remains as en-gb-x-rp+jaimla for anyone who wants it."
     },
     {
       "id": "sam",
@@ -134,7 +156,7 @@
       "rate": 150,
       "measured": "f0 98 Hz fixed · voiced 54.8% (was 16.6%) · needs +11.5 dB make-up, down from +18.0 dB",
       "note": "pitch 98 98: no range at all. A whisper with real tone under it (voiced 16.6% -> 54.8%) and no pitch lift on any stress."
-    }    ,
+    },
     {
      "id": "voicebox",
      "label": "VOICEBOX",
@@ -144,16 +166,6 @@
      "rate": 150,
      "note": "The sound of formant synthesis before there was compute to hide that it was formant synthesis. Sits on en-earth so the accent belongs nowhere in particular \u2014 a machine voice has no hometown, and a box built to be understood everywhere was tuned to the vowels several Englishes agree on. The giveaway is steadiness: a real vocal tract is always moving so its resonances smear, and a synthesiser holds each one exactly where it was told. breath is zero on every level, which is the single line separating a machine from a person. Measured f0 128.2 Hz; whisper round-trip WER 23.1% \u2014 the character costs some clarity and that is the character."
     },
-    {
-     "id": "vclone",
-     "label": "vCLONE",
-     "title": "voice not cloned",
-     "engine": "voicey",
-     "voice": "",
-     "rate": 0,
-     "disabled": true,
-     "note": "The hover says four words and stops there. An empty slot invites a question; a paragraph of roadmap answers a question nobody asked and dates badly. The clone tools are being built in mindX/voicey from ollywoo with faicey \u2014 when they land this entry gets an engine and a voice, and until then it says exactly what is true."
-    }    ,
     {
      "id": "zen",
      "label": "ZEN",
@@ -173,7 +185,7 @@
      ],
      "_alternates": "THE LABEL DOES NOT CHANGE, AND THAT IS THE FEATURE. Every other alternate in this file renames its button — CLASSIC becomes H.A.L, then K.I.T.T — because those are different characters and you should be able to see which one you picked. ZEN's second face is the same voice in a different body, and announcing it would tell you what to hear before you heard it. Press again; the only indicator is the sound.",
      "note": "Built the way en-earth was \u2014 the features Japanese, Korean, Cantonese, Mandarin and Tibetan speakers of English AGREE on, so it imitates none of them. Syllable timing is where the calm actually lives: every one of those languages is syllable- or mora-timed where English is stress-timed, and syllables of even length do not rush. The l/r merger and any vowel substitution that changes which WORD is heard were deliberately left out, because a voice that cannot be understood is not calm, it is obscure. Measured f0 118.5 Hz."
-    }    ,
+    },
     {
      "id": "translator",
      "label": "TRANSLATOR",
@@ -193,7 +205,7 @@
        "why": "the other language, placed right and ANCHORED to the body at every phrase boundary"}
      ],
      "note": "THE VOICE THAT KEPT THE DELAY, ON PURPOSE. Everywhere else an overlay a beat behind the body is the bug — it is heard as a second person rather than as a timbre, which is why LEADER stopped being layered. Here it is the point: two speakers, placed apart, one following the other. `anchor` fits the second voice to the body at every phrase boundary rather than only at the sentence, so it tracks rather than wanders. CHOOSE THE LANGUAGE by changing the second layer's `voice` to any espeak-ng language code \u2014 fr, de, es, it, pt, ru, zh, ja, ko, hi, ar. HONEST LIMIT: espeak reads the TEXT IT IS GIVEN with that language's phonemes and prosody. It does not translate. Given English text a French voice produces English read by a French speaker, which is the interpreter-booth SOUND without the interpretation. Real translation needs a translation step feeding pre-translated text into the second layer, and the recipe already accepts that \u2014 it is a text source, not a language model."
-    }    ,
+    },
     {
      "id": "zen_stereo",
      "label": "ZEN",
@@ -215,6 +227,16 @@
      ],
      "eq": [[110, 320, 1.5], [420, 640, -2.5], [1800, 3400, 2.5], [4800, 11000, -2.0]],
      "note": "ZEN's second face: the same unhurried delivery in a female body, in stereo. The two are placed apart rather than summed, because depth comes from separation \u2014 that is the whole reason to have a second channel. A gentler version of LEADER's shaping: a small floor, the 420-640 Hz cut (mud reads as EFFORT, and effort is what this voice must never sound like), a clarity lift, and the top rolled off because sibilance reads as tension."
+    },
+    {
+     "id": "vclone",
+     "label": "vCLONE",
+     "title": "voice not cloned",
+     "engine": "voicey",
+     "voice": "",
+     "rate": 0,
+     "disabled": true,
+     "note": "The hover says four words and stops there. An empty slot invites a question; a paragraph of roadmap answers a question nobody asked and dates badly. The clone tools are being built in mindX/voicey from ollywoo with faicey \u2014 when they land this entry gets an engine and a voice, and until then it says exactly what is true."
     }
   ],
   "speeds": {
