@@ -2,10 +2,31 @@
 
 Readers that speak a document aloud and light each word as they say it.
 
-[![LISTEN](https://img.shields.io/badge/▶_LISTEN-to_this_README-e3b341?style=for-the-badge)](https://deltaverse.pythai.net/docsreader.html)
+[![LISTEN](https://img.shields.io/badge/▶_LISTEN-to_this_README-e3b341?style=for-the-badge)](https://deltaverse.pythai.net/docsreader)
 
 GitHub strips `<script>` from a README, so the button above opens the same page
 with the reader running on it.
+
+## Live
+
+Four surfaces, all running, all reading. Open any of them and press **LISTEN**.
+
+| | | |
+|---|---|---|
+| **[docsreader](https://deltaverse.pythai.net/docsreader)** | the page that reads itself | Autoplays *this README* from a copy stored beside it. The first visitor's play renders the audio once and keeps it; every visit after that starts from the stored file — about a quarter of a second to sound, with no synthesiser touched. |
+| **[docsplayer](https://deltaverse.pythai.net/docsplayer)** | it reads itself, and it reads any URL | The address bar. Paste a URL, watch each word light as it is spoken, download the audio when it finishes. Switch voice mid-sentence and it continues from where you were. |
+| **[playdocs](https://deltaverse.pythai.net/playdocs)** | an instrument you open a document inside | The same reader behind a rack of controls — waveform, oscilloscope, per-voice knobs. |
+| **[voices](https://deltaverse.pythai.net/voices)** | the cast | Every voice in one place: `neural`, `jaimla`, `overlord`, LEADER, ANCIENT, ZEN, and the classic faces that cycle on repeat presses. |
+
+Two more, in context rather than on a page of their own:
+
+- **[mindx.pythai.net/doc/MANIFESTO](https://mindx.pythai.net/doc/MANIFESTO)** — the reader as it ships inside a document view, with the XMMS-era transport and the instrument deck docked at the bottom. [THESIS](https://mindx.pythai.net/doc/THESIS) too.
+- **[wordpress-reader.js](https://deltaverse.pythai.net/engine/ngn/wordpress-reader.js)** — `wordpress.reader`, served and CORS-open for any WordPress that wants it.
+
+The reading is done by the store behind these pages, which you can look at directly:
+[`/docsplayer/voices`](https://deltaverse.pythai.net/docsplayer/voices) is the registry the
+three surfaces share, and [`/docsplayer/store`](https://deltaverse.pythai.net/docsplayer/store)
+reports how much of its 300 MB is spent and what gets pruned next.
 
 ```
 deltaverse/   the DeltaVerse reader — voice registry, panel, audio store, renderers
@@ -49,7 +70,7 @@ calibrated octave underneath at 40 Hz.
 
 **On a page you control** — three scripts and `DVDocReader.mount()`.
 
-**On any URL** — [doc.player](https://deltaverse.pythai.net/docsplayer.html) has
+**On any URL** — [doc.player](https://deltaverse.pythai.net/docsplayer) has
 an address bar. Paste a URL, hear it read, render it to a file you keep. No
 markup from the fetched page ever enters the reader's: the response is parsed in
 an inert document and only *text* comes out.
@@ -86,7 +107,7 @@ extraction into the chunk shape [mindX](https://mindx.pythai.net)'s own ingestio
 uses, and a page arrives in the index looking like a document.
 
 ```bash
-python3 rageweb/rageweb.py https://deltaverse.pythai.net/voices.html
+python3 rageweb/rageweb.py https://deltaverse.pythai.net/voices
 python3 rageweb/rageweb.py --blocks /tmp/blocks.json --name deltaverse/voices
 ```
 
