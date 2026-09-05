@@ -38,7 +38,18 @@
 
   var DB = 'dv-doc-audio', STORE = 'parts', VER = 1;
   var CAP = 64 * 1024 * 1024;                      // bytes held in the browser, before eviction
-  var ROOT = '/audio';
+
+  // WHERE THE STORE IS. Same-origin `/audio` is right for every DeltaVerse page
+  // and wrong for the only reader that does not run on DeltaVerse: wordpress.reader
+  // lives on the publisher's own site, where `/audio` is the publisher's `/audio`
+  // and there is nothing in it. An absolute root is set once, before this loads.
+  // Cross-origin reads work because the store answers with an
+  // Access-Control-Allow-Origin for named pythai.net surfaces; a host that is not
+  // named simply gets no manifest, and the reader falls back to live synthesis,
+  // which is the same thing that happens for a document nobody has rendered.
+  var ROOT = (typeof global.DV_AUDIO_ROOT === 'string' && global.DV_AUDIO_ROOT)
+    ? String(global.DV_AUDIO_ROOT).replace(/\/+$/, '')
+    : '/audio';
   var mem = {};                                    // manifest memo, per (doc, voice)
   var dbp = null;
 
@@ -215,5 +226,9 @@
     version: '1.0.0'
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = DV;
+  DV.root = function (url) {
+    if (url !== undefined) { ROOT = String(url || '/audio').replace(/\/+$/, ''); mem = {}; }
+    return ROOT;
+  };
   global.DVDocAudio = DV;
 })(typeof window !== 'undefined' ? window : this);

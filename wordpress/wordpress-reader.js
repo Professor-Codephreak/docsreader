@@ -38,6 +38,12 @@
  * It is inert on anything that is not a single article, and it degrades to
  * nothing if the synthesiser is missing.
  *
+ * TWO WAYS TO CONFIGURE IT. The plugin (wordpress-reader.php) knows things this
+ * file can only guess: which post this is, where its content element is, and
+ * whether anything has been rendered for it. It sets `window.WPReader` before
+ * this loads and the guessing is skipped entirely. Without the plugin the script
+ * still works by inspection, which is what the plain widget install does.
+ *
  * TRYING IT ON ONE ARTICLE FIRST. The widget is site-wide -- that is the whole
  * point of it -- but the first install of anything on somebody's live site
  * should not be site-wide. Declare an allowlist of post ids BEFORE the script
@@ -52,6 +58,12 @@
 (function (global) {
   'use strict';
   var doc = global.document;
+
+  // What the plugin tells us, and what we fall back to without it. Every field is
+  // optional: a missing one means "work it out", which is exactly the pre-plugin
+  // behaviour, so an install that sets nothing is not a broken install.
+  var CFG = global.WPReader || {};
+  function cfg(k, dflt) { return (CFG[k] === undefined || CFG[k] === '') ? dflt : CFG[k]; }
 
   // THE THEME IS NOT KNOWN IN ADVANCE. WordPress themes agree on very little, so
   // the content element is found by trying what themes actually use, in order of
@@ -70,8 +82,24 @@
     '.sharedaddy', '.jp-relatedposts', '.wp-block-post-comments', '#comments',
     '.comments-area', '.related-posts', '.author-bio', '.post-navigation',
     '.wp-block-latest-posts', '.widget', 'aside', 'nav', 'footer',
-    '.addtoany_share_save_container', '.code-block', '.adsbygoogle'
+    '.addtoany_share_save_container', '.code-block', '.adsbygoogle',
+    // Signature and provenance blocks, which sit INSIDE the content rather than
+    // around it and so are not caught by anything above. The first real install
+    // read a cryptographic identity footer aloud -- a wallet address, a public
+    // key and a list of domains, spoken one character class at a time -- because
+    // it was the last child of .entry-content and looked exactly like prose.
+    '.mindx-author-identity', '.author-identity', '.post-signature',
+    '.copyright-footer', '.site-footer', '.entry-footer', '.wp-block-post-terms'
   ];
+
+  // A selector the plugin supplied is tried first and the guesses stay behind it.
+  // The list is not replaced: a theme can be updated out from under a stored
+  // setting, and falling back to the guesses is better than falling back to
+  // nothing.
+  function selectors(name, guesses) {
+    var given = cfg(name, '');
+    return given ? [given].concat(guesses) : guesses;
+  }
 
   function first(sels, root) {
     for (var i = 0; i < sels.length; i++) {
@@ -101,6 +129,7 @@
   // Which post is this? WordPress puts it on the body as `postid-N` on single
   // articles; there is nothing to read on a page that has no such class.
   function postId() {
+    if (cfg('post', 0)) return String(CFG.post);
     var m = (doc.body && doc.body.className || '').match(/postid-(\d+)/);
     return m ? m[1] : null;
   }
@@ -108,7 +137,7 @@
   // An allowlist restricts the reader to named posts. Absent or empty means no
   // restriction, so the ordinary site-wide install needs no configuration.
   function allowed() {
-    var only = global.WP_READER_ONLY;
+    var only = cfg('only', global.WP_READER_ONLY);
     if (!only || !only.length) return true;
     var id = postId();
     if (!id) return false;
@@ -122,30 +151,51 @@
     if (!global.DVDocReader || !global.DVVoices) return;
     if (!isSingle()) return;
     if (!allowed()) return;
-    var content = first(CONTENT);
+    var content = first(selectors('content', CONTENT));
     if (!content) return;
     prune(content);
 
-    // The LISTEN button belongs beside the headline, not inside the body — the
-    // body is what gets read, and a control inside it would read itself.
-    // doc.player puts the button in the first h1 of its root, so it is given a
-    // root that starts at the title and contains the content.
-    var title = first(TITLE);
-    var host = content;
-    if (title && !content.contains(title)) {
-      // wrap without moving anything the theme depends on: a wrapper that is
-      // display:contents is invisible to layout
-      var common = title.parentNode;
-      while (common && !common.contains(content)) common = common.parentNode;
-      if (common) host = common;
+    // WHERE THE STORE IS, if there is one. Set before mount(), because
+    // doc-reader asks DVDocAudio for a manifest as it comes up; setting it after
+    // means the first look happens against the publisher's own /audio, which is
+    // empty, and the reader settles into live synthesis for the session.
+    var store = cfg('audioRoot', '');
+    if (store && global.DVDocAudio && global.DVDocAudio.root) {
+      try { global.DVDocAudio.root(store); } catch (e) {}
     }
 
+    // MOUNT ON THE CONTENT, NOT ON AN ANCESTOR OF IT.
+    //
+    // This used to walk up to the nearest element containing both the headline
+    // and the body so that the button would land inside the document's own h1.
+    // It did land there. It also handed the reader every node between those two
+    // elements, and on a normal theme that is the site footer: the last thing it
+    // read aloud on the first real install was a list of the site's own domains.
+    //
+    // So the root is the article body and nothing else, and the button is moved
+    // to the headline afterwards. Moving a node does not disturb its listeners,
+    // and the block list stays exactly the article.
     var reader = global.DVDocReader.mount({
-      root: host,
-      doc: postId() || 'post',
-      label: (doc.title || 'article').split('|')[0].trim().slice(0, 40)
+      root: content,
+      doc: cfg('doc', '') || postId() || 'post',
+      label: cfg('label', '') || (doc.title || 'article').split('|')[0].trim().slice(0, 40)
     });
-    if (reader) global.wordpressReader = reader;
+    if (!reader) return;
+
+    var btn = doc.getElementById('dv-listen-btn');
+    var title = first(selectors('title', TITLE));
+    if (btn && title && !title.contains(btn)) {
+      var holder = btn.parentNode;
+      title.appendChild(btn);
+      // mount() wraps the button in a <p> when it had no h1 to put it in. That
+      // paragraph is now empty and would print as a blank line above the article.
+      if (holder && holder !== title && holder.tagName === 'P' && !holder.textContent.trim() &&
+          !holder.children.length && holder.parentNode) {
+        holder.parentNode.removeChild(holder);
+      }
+    }
+
+    global.wordpressReader = reader;
     return reader;
   }
 
@@ -157,6 +207,6 @@
   }
   global.WordPressReader = {
     boot: boot, isSingle: isSingle, allowed: allowed, postId: postId,
-    contentSelectors: CONTENT
+    contentSelectors: CONTENT, config: CFG
   };
 })(typeof window !== 'undefined' ? window : this);

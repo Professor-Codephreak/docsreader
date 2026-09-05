@@ -63,22 +63,34 @@ much of the 300 MB budget is spent and what gets pruned next.
 
 **[Three readers, one voice, and the wall that made a fourth](https://rage.pythai.net/three-readers-one-voice/)**
 is `wordpress.reader` in production, on a WordPress install the reader could not
-fetch from — the article describes the four surfaces and carries a LISTEN button
-put there by the thing it describes.
+fetch from. The article describes the four surfaces and carries a LISTEN button
+put there by the thing it describes, and it plays a rendered file rather than
+synthesising: 44 blocks, 8:57, `neural`, stored once and served from
+`/audio/rage-1469/neural/`.
 
-It is installed on that one post rather than the whole site, which the script
-supports directly: declare the posts before it loads and it stays inert
-everywhere else.
+It ships as a plugin. WordPress already knows which post you are on, where its
+content element is and what the headline is; the plugin hands the reader all
+three instead of letting it guess, and loads it only where it will be used.
+
+**[Download wordpress-reader.zip](https://deltaverse.pythai.net/wordpress-reader.zip)**
+· `sha256 05d308eb232f673383cba77afa270a8bb9f56646c9cad5a916fadf0821fff6a7`
+([verify](https://deltaverse.pythai.net/wordpress-reader.zip.sha256)) · source in
+[`wordpress/plugin/`](wordpress/plugin/)
+
+Plugins → Add New → Upload Plugin → Activate, then Settings → Reader. Put one
+post ID in *Only these posts* to try it on a single article before turning it on
+everywhere; clear the field to enable it on all of them. An empty field means no
+restriction, so a half-finished setting cannot quietly switch the reader off.
+
+There is still a no-install route — the same scripts in a footer `custom_html`
+widget, which is what the article ran on first:
 
 ```html
-<script>window.WP_READER_ONLY = [1469];</script>
+<script>window.WPReader = { only: [1469], content: ".entry-content" };</script>
 <script src="https://deltaverse.pythai.net/engine/ngn/voices.js"></script>
 <script src="https://deltaverse.pythai.net/engine/ngn/doc-reader.js"></script>
 <script src="https://deltaverse.pythai.net/engine/ngn/wordpress-reader.js"></script>
 ```
-
-Drop the first line and every article gets a button. Nothing declared means no
-restriction, so forgetting the allowlist cannot quietly switch the reader off.
 
 ```
 deltaverse/   the DeltaVerse reader — voice registry, panel, audio store, renderers

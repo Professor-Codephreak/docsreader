@@ -52,16 +52,46 @@ on its own private network.
 
 ## 3. On WordPress — wordpress.reader
 
-For a site you publish to but do not want to fetch from — which, as it turns out,
-is most WordPress sites. Add **one** custom-HTML widget in a footer region:
+For a site you publish to but cannot fetch from — which, as it turns out, is most
+WordPress sites.
+
+### The plugin
+
+[wordpress-reader.zip](https://deltaverse.pythai.net/wordpress-reader.zip)
+(`sha256 05d308eb232f673383cba77afa270a8bb9f56646c9cad5a916fadf0821fff6a7`),
+source in `wordpress/plugin/`.
+
+Plugins → Add New → Upload Plugin → Activate → Settings → Reader.
+
+| setting | what it does |
+|---|---|
+| Script source | where the reader files load from; leave alone unless you host them |
+| Show on | which single post types get a button. Archives and search are never read |
+| Only these posts | post IDs. One ID is how you try it on one article |
+| Rendered audio store | optional. A store that holds a recording plays the file instead |
+| Theme selectors | only needed if your theme names its article something unusual |
+| Store prefix | names this site inside a shared store; defaults to your domain |
+
+**Why a plugin rather than three script tags.** The widget below works and needs
+nothing installed, but it cannot know anything: it infers the post from a body
+class and finds the article by trying selectors themes tend to use. On the first
+real install that inference reached past the article, and the reader read the
+site footer aloud. WordPress knows all of it; the plugin passes it down.
+
+### The widget, for a site where you cannot install a plugin
+
+Add **one** custom-HTML widget in a footer region:
 
 ```html
+<script>window.WPReader = { only: [1469], content: ".entry-content" };</script>
 <script src="https://deltaverse.pythai.net/engine/ngn/voices.js"></script>
 <script src="https://deltaverse.pythai.net/engine/ngn/doc-reader.js"></script>
 <script src="https://deltaverse.pythai.net/engine/ngn/wordpress-reader.js"></script>
 ```
 
-Every article gets a LISTEN button. Nothing else to install.
+Every field of `WPReader` is optional; with none of it the script falls back to
+inspection. An absent or empty `only` means no restriction, so forgetting the
+allowlist cannot silently disable the reader.
 
 **A footer widget, not post content.** WordPress runs `wpautop` over post bodies
 and it mangles `<script>`. The widget region is the only reliable sitewide route.
@@ -69,38 +99,62 @@ and it mangles `<script>`. The widget region is the only reliable sitewide route
 It is inert on anything that is not a single article, so archives, the home page
 and search results are left alone.
 
-### Try it on one article first
+Live example: [rage.pythai.net/three-readers-one-voice](https://rage.pythai.net/three-readers-one-voice/).
 
-The widget is sitewide, but a first install does not have to be. Name the posts
-before the scripts load and the reader boots on those and nowhere else:
+### Playing a rendered file instead of synthesising
+
+Add `doc-audio.js` and point it at a store. The reader asks the store whether it
+holds a recording of this post, plays the file when it does — which seeks, scrubs
+and downloads — and falls back to live synthesis when it does not.
 
 ```html
-<script>window.WP_READER_ONLY = [1469];</script>
+<script>
+window.WPReader  = { only: [1469], doc: "rage-1469",
+                     audioRoot: "https://deltaverse.pythai.net/audio" };
+window.DV_AUDIO_ROOT = "https://deltaverse.pythai.net/audio";
+</script>
+<!-- ...voices.js, doc-reader.js... -->
+<script src="https://deltaverse.pythai.net/engine/ngn/doc-audio.js"></script>
+<!-- ...wordpress-reader.js -->
 ```
 
-Delete that line to go sitewide. An absent or empty list means no restriction, so
-forgetting it cannot silently disable the reader — the restriction is opt-in.
+The store root must be absolute. `doc-audio.js` defaults to a same-origin
+`/audio`, which is right on every DeltaVerse page and wrong on the one reader
+that does not run there — the publisher's own `/audio` is empty, and the reader
+would settle into live synthesis without ever saying why. Cross-origin reads work
+because the store answers with an `Access-Control-Allow-Origin` for named hosts;
+an unnamed host gets no manifest and falls back, which is the same thing that
+happens for a post nobody has rendered.
 
-Live example: [rage.pythai.net/three-readers-one-voice](https://rage.pythai.net/three-readers-one-voice/),
-scoped to exactly that post.
+Render a post the way any other document is rendered, with the block list the
+reader itself produces so the marks line up by index:
 
-### Three things the first real install cost us
+```bash
+python3 render/render_neural.py rage-1469 neural   # reads /tmp/blocks.json
+```
 
-**Not every registered footer region renders.** `footer-1` through `footer-4`
-all reported `status: active` over REST, and only `footer-1` was ever emitted by
-the theme. A widget placed in `footer-2` verified perfectly and appeared on no
-page at all. Check a rendered page, not the sidebar's own status.
+### Four things the first real install cost us
 
-**Read widgets with `?context=edit` or they all look empty.** The default
-representation returns `rendered` and no `instance`, so the content field is
-absent rather than wrong. Reading a live 11 KB widget the default way reported
-`0 bytes` while the site was happily serving it.
+**Mount on the article, not on an ancestor of it.** Putting the button inside the
+document's own `<h1>` meant mounting on the nearest element containing both the
+headline and the body — which on a normal theme contains the site footer too.
+Mount on the content and *move* the button afterwards; moving a node does not
+disturb its listeners.
 
-**Placing a widget blanks it.** Creating it, placing it and writing the content
-are three separate calls in that order, and the middle one wipes what the first
-one stored. Every one of those steps answers `200`. There is an installer that
-does the dance and verifies the result in mindX at
-`agents/wordpress_agent/scripts/footer_widget.py`.
+**Furniture lives inside the content as well as around it.** A signed author
+identity block was the last child of `.entry-content`, so it looked exactly like
+prose, and the reader read a wallet address out loud. Selector lists that only
+name things *around* an article will not catch it.
+
+**Not every registered footer region renders.** `footer-1` through `footer-4` all
+reported `status: active` over REST; only `footer-1` was ever emitted by the
+theme. A widget placed in `footer-2` verified perfectly and appeared nowhere.
+Check a rendered page, not the sidebar's own status.
+
+**Read widgets with `?context=edit` or they all look empty**, and placing a
+widget blanks it — create, place, then write the content again, three calls that
+all answer `200`. There is an installer that does the dance and verifies the
+result in mindX at `agents/wordpress_agent/scripts/footer_widget.py`.
 
 ## Rendering audio ahead
 
