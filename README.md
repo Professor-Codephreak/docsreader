@@ -9,24 +9,62 @@ with the reader running on it.
 
 ## Live
 
-Four surfaces, all running, all reading. Open any of them and press **LISTEN**.
+Everything below is running right now. Open any of it and press **LISTEN**.
+
+### The readers
 
 | | | |
 |---|---|---|
-| **[docsreader](https://deltaverse.pythai.net/docsreader)** | the page that reads itself | Autoplays *this README* from a copy stored beside it. The first visitor's play renders the audio once and keeps it; every visit after that starts from the stored file — about a quarter of a second to sound, with no synthesiser touched. |
+| **[docsreader](https://deltaverse.pythai.net/docsreader)** | the page that reads itself | Autoplays *this README* from a copy stored beside it. The first visitor's play renders the audio once and keeps it; every visit after starts from the stored file — about a quarter of a second to sound, with no synthesiser touched. |
 | **[docsplayer](https://deltaverse.pythai.net/docsplayer)** | it reads itself, and it reads any URL | The address bar. Paste a URL, watch each word light as it is spoken, download the audio when it finishes. Switch voice mid-sentence and it continues from where you were. |
 | **[playdocs](https://deltaverse.pythai.net/playdocs)** | an instrument you open a document inside | The same reader behind a rack of controls — waveform, oscilloscope, per-voice knobs. |
 | **[voices](https://deltaverse.pythai.net/voices)** | the cast | Every voice in one place: `neural`, `jaimla`, `overlord`, LEADER, ANCIENT, ZEN, and the classic faces that cycle on repeat presses. |
 
-Two more, in context rather than on a page of their own:
+### In a document view — THESIS and MANIFESTO
 
-- **[mindx.pythai.net/doc/MANIFESTO](https://mindx.pythai.net/doc/MANIFESTO)** — the reader as it ships inside a document view, with the XMMS-era transport and the instrument deck docked at the bottom. [THESIS](https://mindx.pythai.net/doc/THESIS) too.
-- **[wordpress-reader.js](https://deltaverse.pythai.net/engine/ngn/wordpress-reader.js)** — `wordpress.reader`, served and CORS-open for any WordPress that wants it.
+The reader as it ships inside something else: an XMMS-era transport, the
+instrument deck docked at the bottom, and the document itself as the page. Both
+are read by `neural` — piper `en_GB-alan-medium`, no rate and no pitch, the
+reference voice exactly as it is written down.
 
-The reading is done by the store behind these pages, which you can look at directly:
-[`/docsplayer/voices`](https://deltaverse.pythai.net/docsplayer/voices) is the registry the
-three surfaces share, and [`/docsplayer/store`](https://deltaverse.pythai.net/docsplayer/store)
-reports how much of its 300 MB is spent and what gets pruned next.
+| | | |
+|---|---|---|
+| **[MANIFESTO](https://mindx.pythai.net/doc/MANIFESTO)** | 4,374 words · 34:06 · 3 parts | [`/listen/MANIFESTO`](https://mindx.pythai.net/listen/MANIFESTO) · [part-01.ogg](https://mindx.pythai.net/listen/MANIFESTO/part-01.ogg) |
+| **[THESIS](https://mindx.pythai.net/doc/THESIS)** | 2,324 words · 21:56 · 2 parts | [`/listen/THESIS`](https://mindx.pythai.net/listen/THESIS) · [part-01.ogg](https://mindx.pythai.net/listen/THESIS/part-01.ogg) |
+
+Both documents are public. The rest of [mindX](https://mindx.pythai.net)'s library
+is not — a link to any other doc answers with a door rather than the text — so
+these two are the whole of what you can hear there without an account.
+
+The `/listen/{doc}` endpoint is the reader's file side with the page taken away.
+It answers `202` while a render is running and `200` with a manifest when it is
+done — part count, word count, seconds, bytes, and the backend that produced each
+part — and every part is a plain Ogg/Opus URL you can hand to anything that
+plays audio. Nothing above needs a browser.
+
+### On pages that are not about reading
+
+The point of `DVDocReader.mount()` is that it goes on a page that had no idea it
+was going to be read. Three DeltaVerse pages carry it and never mention it:
+
+- **[the map](https://deltaverse.pythai.net/map)** — the DeltaVerse contract map
+- **[the periphery](https://deltaverse.pythai.net/periphery)** — what sits at the edge
+- **[the 404](https://deltaverse.pythai.net/404)** — even the page you reach by being lost
+
+### The store behind them
+
+[`/docsplayer/voices`](https://deltaverse.pythai.net/docsplayer/voices) is the
+registry all the surfaces share — one JSON file is why the same voice sounds the
+same on every one of them.
+[`/docsplayer/store`](https://deltaverse.pythai.net/docsplayer/store) reports how
+much of the 300 MB budget is spent and what gets pruned next.
+
+### Not live anywhere yet
+
+**[wordpress-reader.js](https://deltaverse.pythai.net/engine/ngn/wordpress-reader.js)**
+is built, served, and CORS-open for any WordPress that wants it — but it is not
+installed on a live site. Installing it means adding a widget to somebody's
+footer, which is their call and not ours.
 
 ```
 deltaverse/   the DeltaVerse reader — voice registry, panel, audio store, renderers
