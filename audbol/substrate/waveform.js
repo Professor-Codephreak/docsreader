@@ -362,7 +362,11 @@
   // ── the take ─────────────────────────────────────────────────────────────
   // An AudioBuffer, or anything that answers the same three questions — which is what makes the whole
   // module testable in Node with a plain object.
-  View.prototype.load = function (buf) {
+  // load(buf[, opts]) — opts.pyramid: a pyramid already built for THIS buffer (a worker's, via
+  // buildPyramid on the same channel data and BRANCH), used instead of building one here. The caller
+  // vouches that it belongs to buf; a pyramid of a different buffer draws a different take.
+  View.prototype.load = function (buf, opts) {
+    opts = opts || {};
     if (!buf) { this.pyramid = null; this.buffer = null; this.duration = 0; this.channels = 0; this._layerDirty = true; this.draw(); return this; }
     var chans = [], i;
     if (buf.getChannelData) { for (i = 0; i < buf.numberOfChannels; i++) chans.push(buf.getChannelData(i)); }
@@ -371,7 +375,7 @@
     this.buffer = buf;
     this.sampleRate = buf.sampleRate || 44100;
     this.channels = chans.length;
-    this.pyramid = buildPyramid(chans, this.sampleRate, BRANCH);
+    this.pyramid = (opts.pyramid && opts.pyramid.length === (chans[0] ? chans[0].length : 0)) ? opts.pyramid : buildPyramid(chans, this.sampleRate, BRANCH);
     this.duration = this.pyramid ? this.pyramid.length / this.sampleRate : 0;
     this._sel = null; this.playSec = null; this.offset = 0;
     this.fit();
@@ -1011,7 +1015,7 @@
     BRANCH: BRANCH,
     MIN_SPP: MIN_SPP,
     SAMPLE_REGIME: SAMPLE_REGIME,
-    version: '1.0.0'
+    version: '1.1.0'
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = DV;
   global.DVWaveform = DV;

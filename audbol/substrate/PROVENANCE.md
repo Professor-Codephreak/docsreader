@@ -10,11 +10,11 @@ upstream, copy it again and update this file; do not patch the copy.
 | `voice-scope.js` | the **ground** (full-bleed) and the **strip** (deck oscilloscope): waveform, log spectrum, inflection, drawn from ONE analyser read per frame; four honest states (live / resting / untapped / unknown); voiceprint every `printHz` | `9cbb8d97bc107c40619c3adc0e95e7fcc7ced3b01b6ef87acb36f60850e44da1` |
 | `periphery-frame.js` | the **border**: nine stations in a perspective frustum, eight on the ring, each `charge()`d by one log-spaced band of the playing voice's spectrum | `47cb337f2723db11b4aad3177ebbf4356633c80e5b8c34926caacdebab3d4be1` |
 | `oscilloscope.js` | `DVScope`: the eight acoustic metrics at 18 decimals over uint256 and the SHA-256/512 voiceprint — the browser-lane twin of `audbol.measure` | `8b155f6053ac4764df19fc6d70c6b75887175cb62c80efe34265536609aeeefa` |
-| `waveform.js` | the **deck**: Audacity-grade waveform with a 256-branch peak pyramid, ruler, selection, playhead, sample-level zoom | `04d6e021abb518027eb79ce07d9c39077cf27d2cf40738f4c3315dbf154070cc` |
+| `waveform.js` | the **deck**: Audacity-grade waveform with a 256-branch peak pyramid, ruler, selection, playhead, sample-level zoom | `06423932ea233b6babd3534afb1517a5d645e5998a3b5edf45cfc4a1da8c3d4a` |
 | `theme-read.js` | reads the `--dv-*` palette so the substrates recolour with the theme | `470fa1909c6624079ca1e5844f8c73307f5ed347449889829f7d8ddf9e644aab` |
 
 Source: `github.com/Professor-Codephreak/DeltaVerse` (local `~/DeltaVerse`),
-`engine/ngn/`, at commit `58b4245dd63495b0765fdbc8aa37f2eca5b1dce4` (2026-09-03),
+`engine/ngn/`, at commit `96e3baf65e5880333624fdf0f9fafe6d69fdc48d` (2026-09-05; waveform.js 1.1.0 — load() accepts a pyramid built elsewhere, for distmind),
 MIT licence (Professor Codephreak / PYTHAI / AgenticPlace). Saved 2026-09-04.
 
 Verify: `cd substrate && sha256sum -c <(grep -o '`[0-9a-f]\{64\}`.*' PROVENANCE.md | ...)` —
