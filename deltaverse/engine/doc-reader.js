@@ -1,38 +1,52 @@
 /*!
- * DeltaVerse nGn — doc.reader (DVDocReader: the document, read aloud).
+ * DeltaVerse nGn — doc.reader (DVDocReader: the document, read aloud).  v2.0.0
  *
  * A LISTEN button that works, on a static page, with no backend. mindX renders documents to .ogg on a
  * FastAPI service and streams the parts; the DeltaVerse is static — it must deploy to a docroot or to
  * IPFS and still speak. So this reads the document the browser is already showing, through the
- * browser's own synthesiser, and it never fetches anything.
+ * browser's own synthesiser, and it never fetches anything it was not pointed at.
  *
  * WHERE THE BUTTON GOES. Inside the document's own <h1>. "Read this to me" is a decision you make
  * about the thing you are looking at, not a control you go hunting for at the edge of the screen.
- * Pressing it opens the panel AND starts reading in the same gesture — an open panel with a silent
- * PLAY button asks you to press a second button to do the thing you already asked for. Pressing it
- * again hides the panel; it does not stop the audio, because closing a control surface is not the
- * same as saying stop.
+ * Pressing it opens the panel AND starts reading in the same gesture. While it is reading it says
+ * STOP, in red, because the only thing you want from a button that is already reading is the way out.
  *
  * WHAT IT READS. The document's own blocks, in document order — headings, paragraphs, quotes, list
  * items, citations — each split into sentences, because a sentence is the unit a synthesiser can be
  * interrupted between without losing its place, and because Chrome stalls on long utterances.
  * Skipped: anything marked [data-noread], and the reader's own furniture.
  *
- * THE PROGRESS IS REAL. speechSynthesis exposes no audio graph, so there is no waveform to draw and
- * this does not draw a fake one. What it does have is `boundary` events — the synthesiser saying which
- * word it has reached — so the reading line advances on actual word boundaries, the current block is
- * lit, and the current word is marked in place. That is a true readout of where the voice is, which a
- * decorative oscilloscope would not be.
+ * THE PANEL IS AN INSTRUMENT, NOT A NOTICE. What used to sit under the controls was a paragraph
+ * describing the voice — "neural is the reference, it is not edited, speaking through the platform
+ * default, rate 0.98, pitch 1.00". Nobody pressing LISTEN needs to be told that; they can hear it.
+ * In its place is an oscilloscope on the audio that is actually playing, and a timeline you can take
+ * hold of. Two rules keep both honest:
  *
- * VOICES. engine/ngn/voices.js. **neural** is the default and is not editable; every other voice is a
- * stated derivation of it, and the panel says what the derivation is. Jaimla is the machine-learning
- * agent's voice, and it is one of the derivations.
+ *   THE TRACE IS THE SIGNAL. In file mode the rendered audio runs through an AnalyserNode and the
+ *   scope draws the samples. The browser's own synthesiser exposes no audio graph, so in live mode
+ *   there is nothing to tap — and the scope shows a flat line that says so, rather than a waveform
+ *   invented to look busy.
+ *
+ *   THE TIMELINE IS MEASURED. In file mode it is seconds, and the block ticks along it are the
+ *   seconds each block begins, from the manifest. In live mode there is no clock, so the timeline is
+ *   the blocks themselves and dragging it lands on a block. Either way what you drag is what you get.
+ *
+ * THE RENDER MUST BE THE PAGE. Rendered audio is aligned to the page by block INDEX, so an edit that
+ * adds or removes a paragraph after the render shifts every highlight from that point on — the voice
+ * reads one paragraph while the page lights the next. The manifest therefore carries a fingerprint
+ * per block; the player fingerprints the page the same way, maps render blocks to page blocks, and
+ * says on the badge when they no longer match instead of lighting the wrong paragraph in silence.
+ *
+ * VOICES. engine/ngn/voices.js. **neural** is the default on every page and after every refresh; the
+ * rate is remembered because it is a comfort setting, the voice is not because an audition is not a
+ * preference.
  *
  * Prototype lane (.js, zero-dep, UMD). Injects its own style once. Honours prefers-reduced-motion.
- * Degrades to nothing at all — no button, no panel — where speechSynthesis is absent, rather than
- * offering a LISTEN button that cannot listen.
+ * Degrades to nothing at all — no button, no panel — where speechSynthesis is absent AND nothing is
+ * rendered, rather than offering a LISTEN button that cannot listen.
  *
  *   <script src="/engine/ngn/voices.js"></script>
+ *   <script src="/engine/ngn/doc-audio.js"></script>      (optional: the rendered-file lane)
  *   <script src="/engine/ngn/doc-reader.js"></script>
  *   <script>DVDocReader.mount();</script>
  */
@@ -42,115 +56,183 @@
   var doc = global.document;
   var CSS_ID = 'dv-doc-reader-css';
   var KEY = 'dv_reader_v1';
+  var PKEY = 'dv_reader_panel_v2';
   var SKIP = '.dv-reader, .dv-reader-panel, [data-noread], script, style, nav, .foot, .drift';
 
   function el(t, c, x) { var e = doc.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+  function mmss(s) {
+    s = Math.max(0, Math.round(s || 0));
+    var m = Math.floor(s / 60), r = s % 60;
+    return m + ':' + (r < 10 ? '0' : '') + r;
+  }
+  // A block's fingerprint: FNV-1a over the normalised text, hex. The renderer writes the same thing
+  // into the manifest (render_neural.py) so the player can tell whether the page it is on is the page
+  // that was rendered — and line the two up when an edit has added or removed a block.
+  function fingerprint(text) {
+    var t = String(text).toLowerCase().replace(/\s+/g, ' ').trim();
+    var h = 0x811c9dc5;
+    for (var i = 0; i < t.length; i++) {
+      h ^= t.charCodeAt(i);
+      h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+    }
+    return ('00000000' + h.toString(16)).slice(-8);
+  }
+  var reduced = false;
+  try { reduced = !!(global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) {}
 
   var CSS = [
+    // ── the button in the headline ──
     '.dv-reader{display:inline-flex;align-items:center;gap:.5em;margin-left:.7em;vertical-align:middle;',
     '  font-family:var(--mono,ui-monospace,SFMono-Regular,Menlo,monospace);font-size:12px;font-weight:600;',
-    '  letter-spacing:.18em;',
+    '  letter-spacing:.18em;line-height:1;',
     '  padding:7px 15px;border-radius:8px;cursor:pointer;background:rgba(var(--cy,34,211,238),.10);',
     '  color:rgb(var(--cy,34,211,238));border:1px solid rgba(var(--cy,34,211,238),.34);',
     '  transition:background .2s,border-color .2s,color .2s,box-shadow .2s}',
     '.dv-reader:hover{background:rgba(var(--cy,34,211,238),.15);border-color:rgb(var(--cy,34,211,238));',
     '  box-shadow:0 0 18px rgba(var(--cy,34,211,238),.25)}',
     '.dv-reader.on{background:rgb(var(--cy,34,211,238));color:#04040a;border-color:rgb(var(--cy,34,211,238))}',
-    // READING = STOP, IN RED. A button that says LISTEN while it is already
-    // reading is offering something you have; the only thing you want from it
-    // then is the way out. Red because stop is the one control here with a
-    // consequence, and it should not be the same colour as everything else.
-    '.dv-reader.reading{background:rgba(248,81,73,.12);color:#ff6b64;border-color:rgba(248,81,73,.72)}',
-    '.dv-reader.reading:hover{background:rgba(248,81,73,.22);border-color:#ff6b64;',
-    '  box-shadow:0 0 18px rgba(248,81,73,.30)}',
-    '.dv-reader.reading .i{color:#ff6b64}',
     '.dv-reader .i{font-size:10px;line-height:1}',
     '.dv-reader:focus-visible{outline:2px solid rgb(var(--cy,34,211,238));outline-offset:3px}',
-    // DRAGGABLE AND RESIZEABLE. `resize` needs a non-visible overflow to work at
-    // all, and the min-width is the point below which the transport row cannot
-    // lay out. The max-* are viewport-relative so a remembered size from a large
-    // monitor cannot open off-screen on a phone.
-    '.dv-reader-panel{position:fixed;right:18px;bottom:18px;z-index:2147482000;width:312px;',
-    '  resize:both;overflow:auto;min-width:264px;min-height:96px;max-width:96vw;max-height:88vh;',
-    '  font-family:var(--mono,ui-monospace,SFMono-Regular,Menlo,monospace);color:rgba(255,255,255,.82);',
-    '  background:rgba(6,8,16,.92);border:1px solid rgba(var(--vi,157,78,221),.34);border-radius:12px;',
-    '  box-shadow:0 22px 60px rgba(0,0,0,.55);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}',
+    // READING = STOP, IN RED. Stop is the one control with a consequence and it must not look like
+    // everything else.
+    '.dv-reader.reading,.dv-reader.on.reading{background:rgba(248,81,73,.12);color:#ff6b64;border-color:rgba(248,81,73,.72)}',
+    '.dv-reader.reading:hover{background:rgba(248,81,73,.22);border-color:#ff6b64;box-shadow:0 0 18px rgba(248,81,73,.30)}',
+    '.dv-reader.reading .i{color:#ff6b64}',
+    '.dv-reader[data-mute]{cursor:help;opacity:.55;border-style:dashed}',
+    '.dv-reader[data-mute]:hover{background:rgba(var(--am,255,176,84),.10);border-color:rgba(var(--am,255,176,84),.6);',
+    '  color:rgb(var(--am,255,176,84));box-shadow:none}',
+
+    // ── the panel ──
+    // Draggable from anywhere that is not a control, resizeable from the corner; both remembered.
+    '.dv-reader-panel{position:fixed;right:18px;bottom:18px;z-index:2147482000;width:332px;box-sizing:border-box;',
+    '  resize:both;overflow:hidden;min-width:280px;min-height:120px;max-width:96vw;max-height:88vh;',
+    '  display:flex;flex-direction:column;',
+    '  font-family:var(--mono,ui-monospace,SFMono-Regular,Menlo,monospace);color:rgba(255,255,255,.84);',
+    '  background:linear-gradient(180deg,rgba(10,13,24,.74),rgba(5,7,14,.80));',
+    '  border:1px solid rgba(var(--vi,157,78,221),.30);border-radius:14px;',
+    '  box-shadow:0 24px 64px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.03) inset;',
+    '  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}',
+    '.dv-reader-panel *{box-sizing:border-box}',
     '.dv-reader-panel[hidden]{display:none}',
+    '.dv-reader-panel.moving{transition:none;box-shadow:0 30px 80px rgba(0,0,0,.7),0 0 0 1px rgba(var(--cy,34,211,238),.35)}',
+    '.dv-reader-panel.shaded{resize:horizontal;height:auto!important;min-height:0}',
     '.dv-reader-panel.shaded .dvr-body{display:none}',
-    // shaded is a bar: it may still be widened, but height is the title bar
-    '.dv-reader-panel.shaded{resize:horizontal;height:auto!important;min-height:0;overflow:visible}',
-    '.dvr-hd{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:grab;user-select:none;',
-    '  border-bottom:1px solid rgba(255,255,255,.08);font-size:10px;letter-spacing:.18em;text-transform:uppercase}',
-    '.dvr-hd.dragging{cursor:grabbing}',
+    // the corner handle the browser draws is faint; name the corner so it can be found
+    '.dv-reader-panel::after{content:"";position:absolute;right:4px;bottom:4px;width:10px;height:10px;pointer-events:none;',
+    '  border-right:2px solid rgba(255,255,255,.18);border-bottom:2px solid rgba(255,255,255,.18);border-radius:0 0 3px 0}',
+    '.dv-reader-panel.shaded::after{display:none}',
+
+    // header — the grip
+    '.dvr-hd{display:flex;align-items:center;gap:8px;padding:9px 10px 9px 8px;cursor:move;user-select:none;flex:0 0 auto;',
+    '  border-bottom:1px solid rgba(255,255,255,.07);font-size:10px;letter-spacing:.18em;text-transform:uppercase;touch-action:none}',
+    '.dvr-hd .grip{color:rgba(255,255,255,.28);font-size:13px;line-height:1;letter-spacing:-2px;flex:0 0 auto;padding:0 2px}',
+    '.dvr-hd:hover .grip{color:rgba(var(--cy,34,211,238),.8)}',
     '.dvr-hd .d{width:7px;height:7px;border-radius:50%;background:rgb(var(--cy,34,211,238));flex:0 0 auto;',
     '  box-shadow:0 0 9px rgb(var(--cy,34,211,238))}',
     '.dv-reader-panel.playing .dvr-hd .d{animation:dvr-pulse 1.6s ease-in-out infinite}',
     '@keyframes dvr-pulse{0%,100%{opacity:1}50%{opacity:.3}}',
-    '.dvr-hd .t{flex:1;color:rgba(255,255,255,.62);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-    '.dvr-body{padding:10px}',
-    '.dvr-line{height:3px;border-radius:2px;background:rgba(255,255,255,.10);overflow:hidden;margin:2px 0 9px}',
-    '.dvr-line i{display:block;height:100%;width:0;border-radius:2px;',
-    '  background:linear-gradient(90deg,rgb(var(--cy,34,211,238)),rgb(var(--vi,157,78,221)));transition:width .18s linear}',
-    '.dvr-row{display:flex;align-items:center;gap:6px;margin-top:8px}',
+    '.dvr-hd .t{flex:1;min-width:0;color:rgba(255,255,255,.62);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+    '.dvr-hd button{padding:3px 7px!important;font-size:11px!important;line-height:1!important}',
+    '.dvr-mode{font-size:9px;letter-spacing:.12em;text-transform:uppercase;padding:2px 7px;border-radius:999px;white-space:nowrap;',
+    '  border:1px solid rgba(255,255,255,.16);color:rgba(255,255,255,.42)}',
+    '.dvr-mode.file{color:rgb(var(--am,255,176,84));border-color:rgba(var(--am,255,176,84),.42)}',
+    '.dvr-mode.bad{color:#ff6b64;border-color:rgba(248,81,73,.6)}',
+    '.dvr-mode.warn{color:rgb(var(--am,255,176,84));border-color:rgba(var(--am,255,176,84),.7);background:rgba(var(--am,255,176,84),.10)}',
+
+    '.dvr-body{padding:10px 10px 8px;display:flex;flex-direction:column;min-height:0;flex:1 1 auto;overflow:hidden}',
+
+    // ── the scope ──
+    '.dvr-scope{position:relative;height:46px;flex:0 0 auto;border-radius:8px;overflow:hidden;',
+    '  background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.07)}',
+    '.dvr-scope canvas{display:block;width:100%;height:100%}',
+    '.dvr-scope .lbl{position:absolute;right:7px;bottom:4px;font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;',
+    '  color:rgba(255,255,255,.32);pointer-events:none}',
+    '.dvr-scope .lbl:empty{display:none}',
+
+    // ── the timeline ──
+    // A track you can take hold of. The fill is progress, the ticks are where blocks begin, the knob
+    // is where you are. Everything is positioned in percent so a resize does not move the truth.
+    '.dvr-tl{position:relative;height:22px;margin:8px 0 2px;cursor:pointer;touch-action:none;flex:0 0 auto;outline:none}',
+    '.dvr-tl .trk{position:absolute;left:0;right:0;top:9px;height:4px;border-radius:2px;background:rgba(255,255,255,.12)}',
+    '.dvr-tl .fill{position:absolute;left:0;top:9px;height:4px;width:0;border-radius:2px;',
+    '  background:linear-gradient(90deg,rgb(var(--cy,34,211,238)),rgb(var(--vi,157,78,221)))}',
+    '.dvr-tl .tick{position:absolute;top:7px;width:1px;height:8px;background:rgba(255,255,255,.22);pointer-events:none}',
+    '.dvr-tl .tick.h{background:rgba(var(--am,255,176,84),.55);top:5px;height:12px}',
+    '.dvr-tl .knob{position:absolute;top:4px;width:14px;height:14px;margin-left:-7px;border-radius:50%;',
+    '  background:#fff;border:2px solid rgb(var(--cy,34,211,238));box-shadow:0 0 0 3px rgba(var(--cy,34,211,238),.18),0 2px 8px rgba(0,0,0,.5);',
+    '  transition:transform .12s}',
+    '.dvr-tl:hover .knob,.dvr-tl.drag .knob,.dvr-tl:focus-visible .knob{transform:scale(1.18)}',
+    '.dvr-tl:focus-visible .trk{box-shadow:0 0 0 2px rgba(var(--cy,34,211,238),.45)}',
+    '.dvr-tl .tip{position:absolute;top:-16px;transform:translateX(-50%);font-size:9px;letter-spacing:.08em;',
+    '  padding:1px 5px;border-radius:4px;background:rgba(0,0,0,.8);color:#fff;white-space:nowrap;pointer-events:none;display:none}',
+    '.dvr-tl.drag .tip{display:block}',
+    '.dvr-times{display:flex;justify-content:space-between;font-size:9.5px;letter-spacing:.08em;color:rgba(255,255,255,.42);flex:0 0 auto}',
+    '.dvr-times b{font-weight:600;color:rgba(255,255,255,.7)}',
+
+    // ── rows and controls ──
+    '.dvr-row{display:flex;align-items:center;gap:6px;margin-top:8px;flex:0 0 auto}',
     '.dv-reader-panel button{appearance:none;font:inherit;font-size:11px;cursor:pointer;border-radius:7px;',
-    '  padding:5px 9px;color:rgba(255,255,255,.72);background:rgba(255,255,255,.04);',
-    '  border:1px solid rgba(255,255,255,.14);transition:color .2s,border-color .2s,background .2s}',
+    '  padding:6px 9px;color:rgba(255,255,255,.72);background:rgba(255,255,255,.04);',
+    '  border:1px solid rgba(255,255,255,.14);transition:color .2s,border-color .2s,background .2s;line-height:1.1}',
     '.dv-reader-panel button:hover{color:#fff;border-color:rgba(var(--cy,34,211,238),.6);background:rgba(var(--cy,34,211,238),.10)}',
-    '.dvr-play{min-width:44px;color:rgb(var(--cy,34,211,238))!important;border-color:rgba(var(--cy,34,211,238),.45)!important}',
+    '.dv-reader-panel button:focus-visible{outline:2px solid rgba(var(--cy,34,211,238),.8);outline-offset:1px}',
+    '.dvr-play{min-width:46px;color:rgb(var(--cy,34,211,238))!important;border-color:rgba(var(--cy,34,211,238),.45)!important;font-size:12px!important}',
+    '.dvr-stop{color:#ff8a84!important;border-color:rgba(248,81,73,.4)!important}',
+    '.dvr-stop:hover{background:rgba(248,81,73,.14)!important;border-color:#ff6b64!important}',
+    // THE DOWNLOAD IS A LABELLED BUTTON, NOT A GLYPH. The arrow it used to be measured 26px and read as
+    // decoration; people asked where the download was while looking at it.
+    '.dvr-dl{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:10px!important;font-weight:600;letter-spacing:.14em;',
+    '  padding:6px 11px!important;color:rgb(var(--am,255,176,84))!important;border-color:rgba(var(--am,255,176,84),.5)!important;',
+    '  background:rgba(var(--am,255,176,84),.08)!important;text-decoration:none;white-space:nowrap}',
+    '.dvr-dl:hover{background:rgba(var(--am,255,176,84),.18)!important;border-color:rgb(var(--am,255,176,84))!important;',
+    '  box-shadow:0 0 14px rgba(var(--am,255,176,84),.25)}',
+    '.dvr-dl .i{font-size:13px;line-height:1}',
+    '.dvr-dl[aria-disabled="true"]{opacity:.38;cursor:not-allowed;box-shadow:none!important;background:transparent!important}',
+    '.dvr-vlabel{font-size:9px;letter-spacing:.18em;color:rgba(255,255,255,.45);flex:0 0 auto;min-width:38px}',
     '.dv-reader-panel select,.dv-reader-panel input[type=range]{font:inherit;font-size:11px;',
     '  background:rgba(255,255,255,.04);color:rgba(255,255,255,.82);border:1px solid rgba(255,255,255,.14);',
     '  border-radius:7px;padding:4px 6px;flex:1;min-width:0}',
-    // THE OPTION LIST IS NOT THE SELECT. The closed control was styled dark and
-    // the open popup was not, so it fell back to the platform default — a white
-    // list rendering near-white inherited text, and the voice names disappeared
-    // at the moment you were choosing between them. Both halves must be stated.
-    // THE CHOOSER WAS A BARE SELECT IN A ROW OF CONTROLS and read as a
-    // settings field rather than as the thing the panel is for. It is labelled,
-    // given the full width, and made the tallest control here, because choosing
-    // the voice IS the feature on a page about the voices.
-    '.dvr-voicerow{gap:8px}',
-    '.dvr-vlabel{font-size:9px;letter-spacing:.18em;color:rgba(255,255,255,.45);flex:0 0 auto}',
-    '.dv-reader-panel .dvr-voicerow select{font-size:13px;padding:8px 9px;font-weight:600;',
+    // THE OPTION LIST IS NOT THE SELECT: both halves must be styled or the popup falls back to a white
+    // list with near-white text.
+    '.dv-reader-panel .dvr-voicerow select{font-size:12.5px;padding:7px 9px;font-weight:600;',
     '  border-color:rgba(var(--am,255,176,84),.42);color:#fff;cursor:pointer}',
     '.dv-reader-panel .dvr-voicerow select:hover{border-color:rgba(var(--am,255,176,84),.75)}',
-    '.dv-reader-panel select option,.dv-reader-panel select optgroup{',
-    '  background:#0b0f1a;color:#e6edf3}',
+    '.dv-reader-panel select option,.dv-reader-panel select optgroup{background:#0b0f1a;color:#e6edf3}',
     '.dv-reader-panel select option:checked{background:#14304a;color:#fff}',
-    '.dvr-meta{margin-top:9px;font-size:9.5px;line-height:1.75;color:rgba(255,255,255,.42);letter-spacing:.04em}',
-    '.dvr-meta b{color:rgba(var(--cy,34,211,238),.92);font-weight:600}',
-    '.dvr-meta i{font-style:normal;color:rgba(var(--am,255,176,84),.9)}',
-    '.dvr-lock{color:rgba(var(--am,255,176,84),.85)}',
+    '.dv-reader-panel input[type=range]{padding:0;height:22px;accent-color:rgb(var(--cy,34,211,238));border:0;background:transparent}',
+    '.dvr-rateval{font-size:10px;color:rgba(255,255,255,.55);min-width:38px;text-align:right}',
     '.dvr-count{margin-left:auto;font-size:9.5px;color:rgba(255,255,255,.4);white-space:nowrap}',
-    '.dvr-dl{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:24px;',
-    '  border:1px solid rgba(255,255,255,.14);border-radius:7px;color:rgba(255,255,255,.4);',
-    '  text-decoration:none;font-size:12px;cursor:pointer}',
-    '.dvr-dl[aria-disabled="true"]{opacity:.3;pointer-events:none}',
-    '.dvr-dl:hover{color:#fff;border-color:rgba(var(--cy,34,211,238),.6);background:rgba(var(--cy,34,211,238),.10)}',
-    '.dvr-mode{font-size:9px;letter-spacing:.12em;text-transform:uppercase;padding:1px 6px;border-radius:999px;',
-    '  border:1px solid rgba(255,255,255,.16);color:rgba(255,255,255,.42)}',
-    '.dvr-mode.file{color:rgb(var(--am,255,176,84));border-color:rgba(var(--am,255,176,84),.42)}',
-    // the playlist: the document is the album, and its blocks are the tracks
-    '.dvr-list{list-style:none;margin:9px 0 0;padding:0;max-height:158px;overflow-y:auto;',
+    '.dvr-cache{font-size:9px;letter-spacing:.1em;color:rgba(255,255,255,.3);cursor:pointer;margin-top:6px;flex:0 0 auto}',
+    '.dvr-cache:empty{display:none}',
+    '.dvr-cache:hover{color:rgb(var(--cy,34,211,238))}',
+    '#listen-deck:empty{display:none}',
+    '#listen-deck{margin-top:8px;flex:0 0 auto}',
+
+    // ── the playlist: the document is the album, its blocks are the tracks ──
+    '.dvr-list{list-style:none;margin:9px 0 0;padding:0;min-height:56px;max-height:200px;overflow-y:auto;flex:1 1 auto;',
     '  border-top:1px solid rgba(255,255,255,.07);border-bottom:1px solid rgba(255,255,255,.07)}',
     '.dvr-list li{display:flex;gap:7px;align-items:baseline;padding:4px 3px;font-size:10.5px;cursor:pointer;',
     '  color:rgba(255,255,255,.48);border-radius:5px;transition:color .18s,background .18s}',
     '.dvr-list li:hover{color:#fff;background:rgba(var(--cy,34,211,238),.08)}',
     '.dvr-list li .k{flex:0 0 1.9em;text-align:right;font-size:9px;color:rgba(255,255,255,.28)}',
     '.dvr-list li .x{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+    // the row being read shows all of its words; every other row is a one-line track listing
+    '.dvr-list li[aria-current="true"]{align-items:flex-start;padding:6px 3px;color:rgb(var(--cy,34,211,238));background:rgba(var(--cy,34,211,238),.10)}',
+    '.dvr-list li[aria-current="true"] .x{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.55;color:rgba(255,255,255,.78)}',
+    '.dvr-list li .x .w{border-radius:3px;padding:0 1px;transition:background .12s,color .12s}',
+    '.dvr-list li[aria-current="true"] .x .w.said{color:rgba(255,255,255,.5)}',
+    '.dvr-list li[aria-current="true"] .x .w.on{background:rgba(var(--am,255,176,84),.26);color:#fff;box-shadow:0 0 0 1px rgba(var(--am,255,176,84),.32)}',
     '.dvr-list li .g{flex:0 0 auto;font-size:8px;letter-spacing:.1em;color:rgba(255,255,255,.24);text-transform:uppercase}',
-    '.dvr-list li[aria-current="true"]{color:rgb(var(--cy,34,211,238));background:rgba(var(--cy,34,211,238),.10)}',
     '.dvr-list li[aria-current="true"] .k::before{content:"\\25b8 "}',
     '.dvr-list li.done{color:rgba(255,255,255,.3)}',
-    // a platform that cannot speak still shows the button — it says so instead of disappearing
-    '.dv-reader[data-mute]{cursor:help;opacity:.55;border-style:dashed}',
-    '.dv-reader[data-mute]:hover{background:rgba(var(--am,255,176,84),.10);border-color:rgba(var(--am,255,176,84),.6);',
-    '  color:rgb(var(--am,255,176,84));box-shadow:none}',
+
+    // ── the page ──
     '.dv-reading{background:linear-gradient(90deg,rgba(var(--cy,34,211,238),.11),rgba(var(--vi,157,78,221),.05));',
     '  box-shadow:inset 3px 0 0 rgb(var(--cy,34,211,238));border-radius:0 5px 5px 0;transition:background .3s}',
     '.dv-word{background:rgba(var(--am,255,176,84),.20);border-radius:3px;box-shadow:0 0 0 1px rgba(var(--am,255,176,84),.28)}',
-    '@media (prefers-reduced-motion: reduce){.dvr-line i{transition:none}.dv-reader-panel .dvr-hd .d{animation:none}}',
-    '@media (max-width:520px){.dv-reader-panel{right:10px;left:10px;width:auto}}'
+    '@media (prefers-reduced-motion: reduce){.dvr-tl .fill{transition:none}.dv-reader-panel .dvr-hd .d{animation:none}.dvr-tl .knob{transition:none}}',
+    '@media (max-width:520px){.dv-reader-panel{right:8px;left:8px;bottom:8px;width:auto;max-width:none;resize:none}}'
   ].join('');
 
   function ensureCss() {
@@ -159,16 +241,9 @@
   }
 
   // ── the document, as things that can be said ───────────────────────────
-  // A sentence is the unit: it is where a synthesiser can be interrupted without losing its place, and
-  // Chrome stalls on long utterances.
-  //
   // Splitting must not ALTER the text. An abbreviation's full stop is protected with a sentinel and
-  // restored after the split, never deleted — "250 BC." must still be read as "250 BC." Titles (Dr, Mr,
-  // Prof) are always protected because the capitalised word after them is a name, not a new sentence;
-  // every other abbreviation is protected only when what follows is lowercase or a digit, because
-  // "in 250 BC. Dr Wallace wrote…" really is two sentences and reading it as one is worse than the
-  // occasional early break.
-  var SENT = '\u0001';
+  // restored after the split, never deleted — "250 BC." must still be read as "250 BC."
+  var SENT = '';
   var TITLES = /\b(Dr|Mr|Mrs|Ms|Prof|Rev|St|Sr|Jr|Mt|Ave)\.\s/g;
   var ABBR = /\b(No|vs|etc|Fig|Vol|Ch|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec|BC|AD|approx|cf|al|Inc|Ltd|Co)\.\s+(?=[a-z0-9])/g;
   var EG = /\b(e\.g|i\.e|a\.m|p\.m)\.\s/gi;
@@ -179,19 +254,15 @@
     t = t.replace(TITLES, function (m, w) { return w + SENT + ' '; })
          .replace(ABBR, function (m, w) { return w + SENT + ' '; })
          .replace(EG, function (m, w) { return w.replace(/\./g, SENT) + SENT + ' '; });
-
     var parts = t.split(/([.!?…]+)(\s+)/);
     var joined = [], k;
     for (k = 0; k < parts.length; k += 3) {
       var s = (parts[k] || '') + (parts[k + 1] || '');
       if (s.trim()) joined.push(s.trim());
     }
-
     var out = [];
     joined.forEach(function (p) {
       if (p.length <= 240) { out.push(p); return; }
-      // A sentence past the safe utterance length is broken at its own clauses — and the separator
-      // stays with the clause it followed, so nothing is silently dropped from what is spoken.
       var bits = p.split(/([,;:—–]\s+)/), buf = '';
       for (var i = 0; i < bits.length; i += 2) {
         var c = (bits[i] || '') + (bits[i + 1] || '');
@@ -200,15 +271,11 @@
       }
       if (buf.trim()) out.push(buf.trim());
     });
-    // restore every protected stop: the text spoken is the text on the page
     return out.map(function (s) { return s.split(SENT).join('.'); }).filter(Boolean);
   }
 
   function collect(root) {
     var scope = root || doc.body;
-    // [data-noread] excludes; [data-read] INCLUDES something the default selector would never catch.
-    // The map's tool rows are anchors full of spans — the most valuable content on the page, and
-    // invisible to a reader that only knows about paragraphs. An opt-out needs a matching opt-in.
     var sel = 'h1,h2,h3,h4,p,blockquote,li,cite,figcaption,dd,dt,td,[data-read]';
     var nodes = [].slice.call(scope.querySelectorAll(sel));
     var blocks = [];
@@ -216,7 +283,8 @@
       if (n.closest && n.closest(SKIP)) return;
       if (n.querySelector && n.querySelector(sel)) return;              // containers, not leaves
       var txt = (n.innerText || n.textContent || '').replace(/\s+/g, ' ').trim();
-      txt = txt.replace(/\bLISTEN\b\s*$/, '').trim();                   // never read the button
+      // the buttons live inside the headline; never read them
+      txt = txt.replace(/(\s*\b(LISTEN|STOP|SHARE)(\s*[\u2014-]\s*no voice installed)?)+\s*$/, '').trim();
       if (txt.length < 2 || !/[a-z0-9]/i.test(txt)) return;
       var ss = sentences(txt);
       if (!ss.length) return;
@@ -228,34 +296,22 @@
   // ── the reader ─────────────────────────────────────────────────────────
   function mount(opts) {
     opts = opts || {};
-    if (!global.speechSynthesis || !global.SpeechSynthesisUtterance) return null;   // no button it cannot honour
+    var hasSynth = !!(global.speechSynthesis && global.SpeechSynthesisUtterance);
     if (!global.DVVoices) return null;
+    if (!hasSynth && !global.DVDocAudio) return null;   // nothing could ever be heard
     ensureCss();
 
     var synth = global.speechSynthesis;
     var blocks = collect(opts.root);
     if (!blocks.length) return null;
 
-    // NEURAL IS THE DEFAULT ON EVERY REFRESH, AND THAT IS NOT AN OVERSIGHT.
-    //
-    // The voice used to be restored from localStorage, so whatever you last
-    // auditioned became the voice of the realm on that machine forever — press
-    // OVERLORD once to hear it and every page you open afterwards greets you in
-    // it. The page's own rule is the argument against that: a reader who has
-    // heard the realm speak once should hear the same voice next time, on every
-    // page, whatever anyone has been experimenting with. An audition is not a
-    // preference.
-    //
-    // The RATE is still restored, because that is a comfort setting rather than
-    // an identity — someone who reads at 1.3x wants to read at 1.3x, and it does
-    // not change who is speaking.
+    // NEURAL IS THE DEFAULT ON EVERY REFRESH. The rate is a comfort setting and is restored; the voice
+    // is an identity and an audition is not a preference.
     var state = { voice: 'neural', rate: 1 };
     try {
       var saved = JSON.parse(global.localStorage.getItem(KEY) || '{}');
-      if (saved && saved.rate) state.rate = +saved.rate;
+      if (saved && saved.rate) state.rate = clamp(+saved.rate, 0.6, 1.6);
     } catch (e) {}
-    // only what is actually restored is stored: writing `voice` here would leave a
-    // key on disk that looks like a preference and is never read again.
     function save() { try { global.localStorage.setItem(KEY, JSON.stringify({ rate: state.rate })); } catch (e) {} }
 
     // ── the button, inside the document's own h1 ─────────────────────────
@@ -265,7 +321,8 @@
     btn.type = 'button';
     btn.setAttribute('aria-expanded', 'false');
     btn.setAttribute('aria-controls', 'dv-reader-panel');
-    btn.title = 'Open the voice panel and read this page aloud';
+    btn.setAttribute('data-noread', '1');
+    btn.title = 'Open the player and read this page aloud';
     btn.innerHTML = '<span class="i">&#9654;</span>LISTEN';
     if (h1) h1.appendChild(btn);
     else {
@@ -274,46 +331,56 @@
     }
 
     // ── the panel ────────────────────────────────────────────────────────
+    var srcLabel = opts.label || 'doc.player';
     var pnl = el('div', 'dv-reader-panel'); pnl.id = 'dv-reader-panel'; pnl.hidden = true;
+    pnl.setAttribute('data-noread', '1');
+    pnl.setAttribute('role', 'region'); pnl.setAttribute('aria-label', 'audio player');
     pnl.innerHTML =
-      '<div class="dvr-hd"><span class="d"></span><span class="t">doc.player</span>' +
+      '<div class="dvr-hd" title="drag to move · double-click to send back to the corner">' +
+      '<span class="grip" aria-hidden="true">&#8942;&#8942;</span><span class="d"></span><span class="t"></span>' +
       '<span class="dvr-mode" data-a="mode">live</span>' +
       '<button type="button" data-a="shade" title="shrink to the bar">&#9472;</button>' +
       '<button type="button" data-a="close" title="hide the panel (it does not stop the reading)">&#10005;</button></div>' +
       '<div class="dvr-body">' +
-      '<div class="dvr-line"><i></i></div>' +
-      '<div class="dvr-three" data-a="three" aria-live="off" aria-hidden="true">' +
-      '<span class="p"></span><span class="c"></span><span class="n"></span></div>' +
+      '<div class="dvr-scope"><canvas></canvas><span class="lbl"></span></div>' +
+      '<div class="dvr-tl" data-a="tl" role="slider" tabindex="0" aria-label="position" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">' +
+      '<div class="trk"></div><div class="fill"></div><div class="ticks"></div><div class="knob"></div><div class="tip"></div></div>' +
+      '<div class="dvr-times"><span class="el">0:00</span><span class="mid"></span><span class="tot"></span></div>' +
       '<div class="dvr-row">' +
       '<button type="button" data-a="prev" title="previous block">&#9198;</button>' +
       '<button type="button" class="dvr-play" data-a="play" title="play / pause">&#9654;</button>' +
       '<button type="button" data-a="next" title="next block">&#9197;</button>' +
-      '<button type="button" data-a="stop" title="stop and return to the top">&#9632;</button>' +
-      '<a class="dvr-dl" data-a="dl" aria-disabled="true" title="download the audio">&#8615;</a>' +
-      '<span class="dvr-count"></span></div>' +
-      '<div class="dvr-row dvr-voicerow">' +
-      '<span class="dvr-vlabel">VOICE</span>' +
-      '<select data-a="voice" title="choose the voice — the reading continues from where it is"></select>' +
+      '<button type="button" class="dvr-stop" data-a="stop" title="stop and return to the top">&#9632;</button>' +
+      '<button type="button" class="dvr-dl" data-a="dl" aria-disabled="true"><span class="i">&#11015;</span>DOWNLOAD</button>' +
       '</div>' +
-      '<div class="dvr-row"><span style="font-size:9.5px;letter-spacing:.14em;color:rgba(255,255,255,.4)">RATE</span>' +
-      '<input type="range" data-a="rate" min="0.6" max="1.6" step="0.02"></div>' +
-      '<details class="dvr-deck"><summary>AUDIO DECK</summary>' +
-      '<div id="listen-deck"></div>' +
-      '<p class="dvr-deckoff" data-a="deckoff" hidden></p></details>' +
+      '<div class="dvr-row dvr-voicerow"><span class="dvr-vlabel">VOICE</span>' +
+      '<select data-a="voice" title="choose the voice — the reading continues from where it is"></select></div>' +
+      '<div class="dvr-row"><span class="dvr-vlabel">RATE</span>' +
+      '<input type="range" data-a="rate" min="0.6" max="1.6" step="0.02" title="reading speed">' +
+      '<span class="dvr-rateval"></span></div>' +
       '<ol class="dvr-list" data-a="list"></ol>' +
-      '<div class="dvr-meta"></div></div>';
+      '<div id="listen-deck"></div>' +
+      '<div class="dvr-cache" title="audio held in this browser — click to clear"></div>' +
+      '</div>';
     doc.body.appendChild(pnl);
 
-    var line = pnl.querySelector('.dvr-line i');
-    var count = pnl.querySelector('.dvr-count');
-    var meta = pnl.querySelector('.dvr-meta');
-    var sel = pnl.querySelector('[data-a="voice"]');
-    var rate = pnl.querySelector('[data-a="rate"]');
-    var playB = pnl.querySelector('[data-a="play"]');
     var hd = pnl.querySelector('.dvr-hd');
     var title = pnl.querySelector('.dvr-hd .t');
+    var modeEl = pnl.querySelector('[data-a="mode"]');
+    var sel = pnl.querySelector('[data-a="voice"]');
+    var rate = pnl.querySelector('[data-a="rate"]');
+    var rateVal = pnl.querySelector('.dvr-rateval');
+    var playB = pnl.querySelector('[data-a="play"]');
+    var dl = pnl.querySelector('[data-a="dl"]');
+    var tl = pnl.querySelector('[data-a="tl"]');
+    var tlFill = tl.querySelector('.fill'), tlKnob = tl.querySelector('.knob'), tlTicks = tl.querySelector('.ticks'), tlTip = tl.querySelector('.tip');
+    var tEl = pnl.querySelector('.dvr-times .el'), tMid = pnl.querySelector('.dvr-times .mid'), tTot = pnl.querySelector('.dvr-times .tot');
+    var scopeC = pnl.querySelector('.dvr-scope canvas'), scopeL = pnl.querySelector('.dvr-scope .lbl');
+    var listEl = pnl.querySelector('[data-a="list"]');
+    var cacheEl = pnl.querySelector('.dvr-cache');
 
-    rate.value = state.rate;
+    title.textContent = srcLabel;
+    rate.value = state.rate; rateVal.textContent = '×' + state.rate.toFixed(2);
 
     // ── voices ───────────────────────────────────────────────────────────
     function fillVoices() {
@@ -321,45 +388,62 @@
       DVVoices.list().forEach(function (v) {
         var o = doc.createElement('option');
         o.value = v.id;
-        o.textContent = v.name + (v.immutable ? '  (the reference)' : '') + (v.edited ? '  · edited' : '');
+        o.textContent = v.name + (v.edited ? '  · edited' : '');
         sel.appendChild(o);
       });
       sel.value = state.voice;
-      describe();
-    }
-    function describe() {
-      var v = DVVoices.get(state.voice);
-      var pv = v.voice ? v.voice.name : 'the platform default';
-      meta.innerHTML =
-        (v.immutable
-          ? '<span class="dvr-lock">&#9679; neural is the reference &mdash; it is not edited</span>'
-          : 'derived from <b>' + v.from + '</b> &middot; <i>' + v.derivedFrom + '</i>') +
-        '<br>' + v.character +
-        '<br>speaking through <b>' + pv + '</b> &middot; rate ' + v.prosody.rate.toFixed(2) +
-        ' &middot; pitch ' + v.prosody.pitch.toFixed(2);
     }
 
-    // ── reading ──────────────────────────────────────────────────────────
     // ── the two modes ────────────────────────────────────────────────────
-    // LIVE: the browser's synthesiser. Marks the current word (boundary events); no file, no seeking.
-    // FILE: audio rendered ahead by scripts/render-listen.mjs and kept in /audio/<doc>/<voice>/. Seeks,
-    //       scrubs, downloads and survives a reload — but a file has no boundary events, so it lights
-    //       the block and not the word. The manifest carries the exact second each block begins, so the
-    //       block highlight is measured rather than estimated.
-    // Neither is better; the player prefers FILE because someone pressing LISTEN twice wants the second
-    // press to be instant, and says which mode it is in.
+    // LIVE: the browser's synthesiser. Marks the current word from boundary events; no file, no clock.
+    // FILE: audio rendered ahead and kept at /audio/<doc>/<voice>/. Seeks, scrubs, downloads, survives
+    //       a reload, and runs through the scope. The manifest carries the exact second each block
+    //       begins, so the block is measured and the word inside it is estimated — and said to be.
     var docId = opts.doc || (function () {
       var b = (global.location.pathname.split('/').pop() || 'index').replace(/\.html?$/, '');
       return b || 'index';
     })();
-    var A = null, au = null, pi = 0, modeEl = pnl.querySelector('[data-a="mode"]');
-    var dl = pnl.querySelector('[data-a="dl"]');
+    var A = null, au = null, pi = 0;
+    var r2p = null, p2r = null;               // render block -> page block, and back, when they differ
     function fileMode() { return !!A; }
+    function pageBlockOf(r) { return r2p ? r2p[r] : r; }
+    function renderBlockOf(p) { return p2r ? p2r[p] : p; }
+    // Line the render up with the page. With fingerprints the mapping is exact (monotonic match, so a
+    // repeated sentence cannot pair with the wrong twin); without them, index is all there is, and a
+    // count that differs is reported rather than trusted.
+    function alignManifest(m) {
+      r2p = p2r = null;
+      var n = (m.blocks | 0) || 0, fps = m.blockFingerprints;
+      var report = { render: n, page: blocks.length, matched: 0, exact: true };
+      if (fps && fps.length) {
+        var pf = blocks.map(function (b) { return fingerprint(b.text); });
+        var map = [], back = [], j = 0, i;
+        for (i = 0; i < fps.length; i++) {
+          var k = -1;
+          for (var q = j; q < pf.length; q++) if (pf[q] === fps[i]) { k = q; break; }
+          if (k < 0) { map[i] = -1; continue; }
+          map[i] = k; back[k] = i; j = k + 1; report.matched++;
+        }
+        report.exact = report.matched === fps.length && report.matched === pf.length;
+        if (!report.exact) { r2p = map; p2r = back; }
+      } else {
+        report.matched = Math.min(n, blocks.length);
+        report.exact = n === blocks.length;
+      }
+      m.align = report;
+      return report;
+    }
     function partBefore(n) { var t = 0; for (var k = 0; k < n && k < A.parts.length; k++) t += A.parts[k].seconds; return t; }
+    function liveCanSpeak() { try { return hasSynth && !!(DVVoices.usable && DVVoices.usable()); } catch (e) { return false; } }
+
     function ensureAudio() {
       if (au) return au;
-      au = new global.Audio(); au.preload = 'metadata';
-      au.addEventListener('timeupdate', onTime);
+      au = new global.Audio(); au.preload = 'auto';
+      // the scope taps the element through Web Audio, which needs a CORS-clean source when the part
+      // is streamed by URL rather than played from a blob — set before any src
+      try { au.crossOrigin = 'anonymous'; } catch (e) {}
+      au.addEventListener('timeupdate', onTime);            // the coarse clock, for reduced-motion and background tabs
+      au.addEventListener('playing', clockStart);
       au.addEventListener('ended', function () {
         if (pi + 1 < A.parts.length) { pi++; loadPart(pi, true); }
         else { finish(); }
@@ -376,10 +460,8 @@
       });
       return au;
     }
-    // A blob is not the only way to reach a file. objectUrl() fetches the whole
-    // part into memory first, which costs a 486 KB stall before a single sample
-    // plays AND throws away Range support — the direct URL streams and seeks.
-    // So the direct URL is the retry, not the last resort.
+    // A blob is not the only way to reach a file: the direct URL streams and seeks, so it is the
+    // retry rather than the last resort.
     function loadPart(n, autoplay) {
       pi = n;
       var direct = A.parts[n].url;
@@ -392,91 +474,133 @@
       }
       return DVDocAudio.objectUrl(direct).then(function (u) {
         au.src = u;
-        if (autoplay) return au.play().catch(function () { return useDirect('blob playback was refused'); });
+        if (autoplay) return au.play().catch(function (err) {
+          if (err && err.name === 'NotAllowedError') { refused(); return; }
+          return useDirect('blob playback was refused');
+        });
       }).catch(function () { return useDirect('the rendered audio could not be fetched as a blob'); });
     }
+    // NotAllowedError is the autoplay policy, not a broken rendering: say so and stay in file mode
+    function refused() {
+      playing = false; pnl.classList.remove('playing'); playB.innerHTML = '&#9654;'; playB.title = 'play';
+      paintBtn();
+      modeEl.textContent = 'ready — press play';
+      modeEl.title = 'This browser will not start audio on its own until you have interacted with the page. ' +
+        'The reading is loaded; press play.';
+    }
+    // THE CLOCK IS READ EVERY FRAME. `timeupdate` fires about four times a second, so a highlight
+    // driven by it is on average an eighth of a second late and sometimes a quarter — enough that a
+    // reader following the voice sees the page lag. While a file plays, the element's currentTime is
+    // read on every animation frame instead, and the small remaining lead covers the time it takes an
+    // eye to notice a change.
+    var LEAD = 0.10, clockRAF = 0;
+    function clockTick() {
+      clockRAF = 0;
+      if (!playing || !fileMode() || !au || au.paused) return;
+      onTime();
+      clockRAF = global.requestAnimationFrame(clockTick);
+    }
+    function clockStart() { if (!clockRAF && !reduced) clockRAF = global.requestAnimationFrame(clockTick); }
     function onTime() {
       if (!A || !au) return;
       var part = A.parts[pi], t = au.currentTime;
-      var b = part.from;
-      for (var k = 0; k < part.marks.length; k++) if (part.marks[k].at <= t) b = part.marks[k].block; else break;
-      if (b !== bi) { bi = b; light(blocks[bi]); }
-      // THE THREE-WORD VIEW IN FILE MODE.
-      // A rendered file carries no word boundaries — only the second each BLOCK
-      // begins, which is measured. So the block is exact and the position inside
-      // it is interpolated by weight (a word's length plus a bonus for the
-      // punctuation after it, which is what actually takes the time). The strip
-      // was simply frozen here before, because it only ever listened to an event
-      // that file playback does not produce.
-      threeFromClock(b, t, part);
-      var elapsed = partBefore(pi) + t;
-      line.style.width = (A.seconds ? clamp(elapsed / A.seconds, 0, 1) * 100 : 0).toFixed(2) + '%';
-      count.textContent = (bi + 1) + ' / ' + blocks.length;
-      markList();
-    }
-    // FALLING BACK INTO SILENCE IS NOT A FALLBACK.
-    //
-    // This dropped to live synthesis on any audio error. On a machine with no
-    // installed voices — every headless Linux, and this is the machine that most
-    // needs the rendered audio — live synthesis CANNOT speak, so the "fallback"
-    // was a guaranteed silence, announced by a pause button that claimed to be
-    // playing. Degrading from something that failed once to something that
-    // cannot work at all is strictly worse than staying put and saying so.
-    function liveCanSpeak() {
-      try { return !!(global.DVVoices && global.DVVoices.usable && global.DVVoices.usable()); }
-      catch (e) { return false; }
+      var rb = part.from, mk = -1;
+      for (var k = 0; k < part.marks.length; k++) if (part.marks[k].at <= t + LEAD) { rb = part.marks[k].block; mk = k; } else break;
+      var b = pageBlockOf(rb);
+      if (b >= 0 && b !== bi && blocks[b]) { bi = b; light(blocks[bi]); }
+      if (b >= 0 && mk >= 0 && blocks[bi] && blocks[bi].words.length) {
+        var start = part.marks[mk].at;
+        var end = mk + 1 < part.marks.length ? part.marks[mk + 1].at : part.seconds;
+        var gap = (A.gap != null ? +A.gap : 0.35);
+        var span = Math.max(0.2, end - start - gap);           // the speech, not the pause after it
+        setWord(wordAtFraction(blocks[bi].words, (t + LEAD - start) / span));
+      }
+      progress();
     }
     function fallToLive(why) {
       if (!liveCanSpeak()) { failFile(why); return; }
       A = null; if (au) { try { au.pause(); } catch (e) {} }
-      modeEl.textContent = 'live'; modeEl.classList.remove('file');
-      dl.setAttribute('aria-disabled', 'true');
+      setMode('live');
       if (why) { try { console.info('[doc.player] ' + why + ' — falling back to live synthesis'); } catch (e) {} }
     }
-    // The rendered audio failed and there is no synthesiser behind it. Stop
-    // pretending: stop the transport, keep file mode (the file is still the only
-    // thing that could ever work here), and put the reason where it can be read.
+    // FALLING BACK INTO SILENCE IS NOT A FALLBACK. With no synthesiser voices installed, the file was
+    // the only thing that could ever work here; stop, stay in file mode, and say why.
     function failFile(why) {
       playing = false;
       if (au) { try { au.pause(); } catch (e) {} }
-      // put the transport back to 'play' — the pause glyph while nothing is
-      // playing is the lie this whole function exists to stop telling
-      try {
-        pnl.classList.remove('playing');
-        var pb = pnl.querySelector('[data-a="play"]');
-        if (pb) { pb.innerHTML = '&#9654;'; pb.title = 'play'; }
-      } catch (e) {}
-      modeEl.textContent = 'file — cannot play';
-      modeEl.classList.add('file');
+      pnl.classList.remove('playing'); playB.innerHTML = '&#9654;'; playB.title = 'play';
+      paintBtn();
+      modeEl.textContent = 'file — cannot play'; modeEl.className = 'dvr-mode file bad';
       modeEl.title = (why || 'the rendered audio could not be played') +
-        ', and this browser has no installed speech voices to fall back on. ' +
-        'The audio file itself is fine — download it with the arrow.';
-      try { console.warn('[doc.player] ' + (why || 'audio failed') +
-        ' — and live synthesis has no voices; not pretending to play'); } catch (e) {}
+        ', and this browser has no installed speech voices to fall back on. The file itself is fine — use DOWNLOAD.';
+      try { console.warn('[doc.player] ' + (why || 'audio failed') + ' — and live synthesis has no voices; not pretending to play'); } catch (e) {}
+    }
+    function setMode(m) {
+      var al = (m === 'file' && A && A.align) ? A.align : null;
+      var off = al && !al.exact;
+      modeEl.className = 'dvr-mode' + (m === 'file' ? ' file' : '') + (off ? ' warn' : '');
+      modeEl.textContent = m === 'file' ? (off ? 'rendered · page changed' : 'rendered') : 'live';
+      modeEl.title = m === 'file'
+        ? 'rendered audio: ' + A.seconds.toFixed(0) + ' s, ' + (A.bytes / 1024 / 1024).toFixed(2) + ' MB, ' + A.parts.length +
+          ' part(s). Seeks and downloads. The block is measured (its start second is in the file); the word inside it is estimated.' +
+          (off ? ' THE PAGE HAS CHANGED SINCE THIS WAS RENDERED: ' + al.render + ' blocks were recorded, the page has ' + al.page +
+            (A.blockFingerprints ? ', ' + al.matched + ' match and are lined up by fingerprint; the rest are not lit.' :
+              '. Without fingerprints in the manifest the highlight is by index and will drift after the edit — re-render this page.') : '')
+        : 'live synthesis in this browser: marks the current word from the synthesiser itself; there is no file to seek, download or scope';
+      try { if (off) console.warn('[doc.player] rendered audio is for a different page: ' + al.render + ' blocks recorded, ' + al.page + ' on the page, ' + al.matched + ' matched' + (A.blockFingerprints ? ' by fingerprint' : ' (no fingerprints — re-render)')); } catch (e) {}
+      dl.setAttribute('aria-disabled', m === 'file' ? 'false' : 'true');
+      dl.title = m === 'file'
+        ? 'Save the rendered audio (' + A.parts.length + ' Opus file' + (A.parts.length > 1 ? 's' : '') + ', ' + (A.bytes / 1024 / 1024).toFixed(1) + ' MB)'
+        : 'No file to download: this reading is synthesised live in your browser. Pages that have been rendered ahead offer a file here.';
+      scopeL.textContent = m === 'file' ? '' : 'live synthesis · no signal to tap';
+      drawTicks();
+      progress();
     }
     function adoptManifest(m) {
       A = (m && m.parts && m.parts.length && m.parts[0].marks) ? m : null;
-      modeEl.textContent = A ? 'file' : 'live';
-      modeEl.classList.toggle('file', !!A);
-      modeEl.title = A
-        ? 'rendered audio: ' + A.seconds.toFixed(0) + 's, ' + (A.bytes / 1024 / 1024).toFixed(2) + ' MB, ' +
-          A.parts.length + ' part(s) — seeks and downloads; a file has no word boundaries, so it lights the block'
-        : 'live synthesis: marks the current word; no file to seek or download';
-      dl.setAttribute('aria-disabled', A ? 'false' : 'true');
-      if (A) { pi = 0; ensureAudio(); }
+      if (A) alignManifest(A);
+      setMode(A ? 'file' : 'live');
+      if (A) {
+        pi = 0; ensureAudio();
+        // Arm the first part IMMEDIATELY: a browser only starts audio inside a user gesture, and awaiting a
+        // fetch before play() spends the gesture. With the source set, the click plays synchronously.
+        loadPart(0, false);
+        warmAll();
+      }
     }
+    // Pull every remaining part into the cache in the background, once, so that seeking anywhere and
+    // every later visit are served from IndexedDB rather than the network.
+    var warmed = false;
+    function warmAll() {
+      if (warmed || !A || !global.DVDocAudio) return;
+      warmed = true;
+      var k = 1;
+      (function next() {
+        if (k >= A.parts.length) { showCache(); return; }
+        DVDocAudio.blob(A.parts[k].url).then(function () { k++; next(); }, function () { k++; next(); });
+      })();
+    }
+    function showCache() {
+      if (!global.DVDocAudio || !A || !DVDocAudio.stats) return;
+      DVDocAudio.stats().then(function (st) {
+        cacheEl.textContent = 'held in this browser: ' + (st.bytes / 1024 / 1024).toFixed(1) + ' MB';
+        cacheEl.title = st.items + ' part(s) of a ' + (st.cap / 1024 / 1024).toFixed(0) + ' MB cap — a later visit fetches nothing. Click to clear.';
+      });
+    }
+    cacheEl.addEventListener('click', function () {
+      if (!global.DVDocAudio) return;
+      DVDocAudio.clear().then(function () { cacheEl.textContent = 'cache cleared'; });
+    });
 
+    // ── state ────────────────────────────────────────────────────────────
     var bi = 0, si = 0, playing = false, cur = null, wordSpan = null, litBlock = null;
-    var srcLabel = opts.label || 'doc.player';   // a host page may name what it mounted
+    var wi = -1;                                 // the word being said, as an index into blocks[bi].words
+    blocks.forEach(function (b) { b.words = b.text.split(/\s+/).filter(Boolean); });
     var totalSent = blocks.reduce(function (a, b) { return a + b.sentences.length; }, 0);
     var doneSent = 0;
+    function sentBefore(n) { var s = 0; for (var k = 0; k < n && k < blocks.length; k++) s += blocks[k].sentences.length; return s; }
 
-    function sentBefore(n) {                     // how many sentences precede block n
-      var s = 0; for (var k = 0; k < n && k < blocks.length; k++) s += blocks[k].sentences.length; return s;
-    }
-    // THE BUTTON HAS ONE JOB AND ONE PLACE THAT DECIDES IT. It was being
-    // written from four different points in this file, which is how a button
-    // ends up disagreeing with the thing it controls.
+    // THE BUTTON HAS ONE JOB AND ONE PLACE THAT DECIDES IT.
     function paintBtn() {
       if (btn.dataset.mute) {
         btn.classList.remove('reading');
@@ -500,118 +624,62 @@
       litBlock = b.node; litBlock.classList.add('dv-reading');
       var r = litBlock.getBoundingClientRect();
       if (r.top < 60 || r.bottom > global.innerHeight - 60) {
-        try { litBlock.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { litBlock.scrollIntoView(); }
+        try { litBlock.scrollIntoView({ block: 'center', behavior: reduced ? 'auto' : 'smooth' }); } catch (e) { litBlock.scrollIntoView(); }
       }
     }
     function unlight() {
-      three('', '', '');
       clearWord();
       if (litBlock) litBlock.classList.remove('dv-reading');
       litBlock = null;
+      wi = -1;
     }
-    // THE THREE-WORD VIEW is driven by the same boundary event that lights the
-    // page, so it can never disagree with it — there is one source of truth for
-    // "which word is being said" and both surfaces read it.
-    var threeEl = null;
-    // Where the block starts and ends inside this part, from the marks — both
-    // measured, so the interpolation is bounded by one block and cannot drift
-    // across the document.
-    function blockSpan(part, block) {
-      var from = null, to = null;
-      for (var k = 0; k < part.marks.length; k++) {
-        if (part.marks[k].block === block && from === null) from = part.marks[k].at;
-        if (from !== null && part.marks[k].block > block) { to = part.marks[k].at; break; }
-      }
-      if (from === null) return null;
-      if (to === null) to = from + (part.seconds || 0) - from;
-      return [from, Math.max(to, from + 0.2)];
+    // ── THE WORD, BY INDEX ────────────────────────────────────────────────
+    // Both lanes resolve the word being said to an INDEX into the block's words; the page and the
+    // panel's row are marked from the same index, so they can never disagree.
+    function wordIndexAt(b, sIdx, charIndex) {
+      var n = 0, k;
+      for (k = 0; k < sIdx && k < b.sentences.length; k++) n += b.sentences[k].split(/\s+/).filter(Boolean).length;
+      var head = b.sentences[sIdx] ? b.sentences[sIdx].slice(0, charIndex) : '';
+      var before = head.split(/\s+/).filter(Boolean).length;
+      if (head && !/\s$/.test(head)) before = Math.max(0, before - 1);
+      return n + before;
     }
-    var lastThree = '';
-    function threeFromClock(block, t, part) {
-      var b = blocks[block];
-      if (!b) return;
-      var span = blockSpan(part, block);
-      if (!span) return;
-      // LIGHT IT AS IT IS SAID, NOT AFTER IT HAS BEEN.
-      //
-      // timeupdate fires about four times a second, so on average the clock is
-      // an eighth of a second stale before the marker moves — and a reader
-      // watching the word follows the VOICE, so a marker that is consistently
-      // behind reads as the page lagging rather than as sampling. The lead is
-      // the half-interval plus the time it takes to notice a change (~90 ms),
-      // which lands the highlight on the word as the syllable starts instead of
-      // as it finishes.
-      var LEAD = 0.22;
-      var f = clamp((t + LEAD - span[0]) / (span[1] - span[0]), 0, 1);
-      var ws = b.text.split(/\s+/).filter(Boolean);
-      if (!ws.length) return;
-      // weight, not count: "the" and "extraordinarily" do not take the same time
-      var w = ws.map(function (x) { return x.length + (/[.,;:!?—]$/.test(x) ? 5 : 0); });
-      var tot = 0, i; for (i = 0; i < w.length; i++) tot += w[i];
-      var want = f * tot, run = 0, k = 0;
-      for (i = 0; i < w.length; i++) { if (run + w[i] > want) { k = i; break; } run += w[i]; k = i; }
-      var sig = block + ':' + k;
-      if (sig === lastThree) return;                 // do not repaint 4x a second
-      lastThree = sig;
-      three(ws[k - 1] || '', ws[k] || '', ws[k + 1] || '');
+    // File mode has no boundary events, so the word is estimated by weight — a word's length plus a
+    // bonus for the punctuation after it, which is what actually takes the time.
+    function wordAtFraction(words, frac) {
+      var total = 0, i, w = [];
+      for (i = 0; i < words.length; i++) { w[i] = words[i].length + 1 + (/[.,;:!?—]$/.test(words[i]) ? 5 : 0); total += w[i]; }
+      var want = clamp(frac, 0, 0.999999) * total, run = 0;
+      for (i = 0; i < words.length; i++) { run += w[i]; if (run > want) return i; }
+      return words.length - 1;
     }
-
-    function three(prev, cur, next) {
-      if (!threeEl) threeEl = pnl.querySelector('[data-a="three"]');
-      if (!threeEl) return;
-      threeEl.querySelector('.p').textContent = prev || '';
-      threeEl.querySelector('.c').textContent = cur || '';
-      threeEl.querySelector('.n').textContent = next || '';
-      threeEl.setAttribute('aria-hidden', cur ? 'false' : 'true');
-    }
-    // Neighbours come from the sentence being spoken, not from the page: the page
-    // has markup between words and the sentence is exactly what was handed to the
-    // synthesiser, so charIndex indexes into it directly.
-    function neighbours(sentence, charIndex, len) {
-      var before = sentence.slice(0, charIndex).split(/\s+/).filter(Boolean);
-      var after = sentence.slice(charIndex + (len || 0)).split(/\s+/).filter(Boolean);
-      return [before.length ? before[before.length - 1] : '', after.length ? after[0] : ''];
-    }
-    // the current word, marked in place — from the synthesiser's own boundary events
-    function markWord(node, sentence, charIndex, len, sentenceAt) {
+    function markWordIndex(node, k) {
       clearWord();
-      if (!node || charIndex == null) return;
-      var word = sentence.slice(charIndex, charIndex + (len || 0));
-      if (!word) word = (sentence.slice(charIndex).split(/\s/)[0] || '');
-      word = word.replace(/^[^\wÀ-ɏ]+|[^\wÀ-ɏ]+$/g, '');
-      // the strip updates even for the short words the page-marking skips: "a"
-      // and "is" are still where you are, and a reading finger that stalls on
-      // them is worse than one that does not
-      var nb = neighbours(sentence, charIndex, len);
-      three(nb[0], word || sentence.slice(charIndex).split(/\s/)[0] || '', nb[1]);
-      if (word.length < 2) return;
+      if (!node || k == null || k < 0) return;
       try {
-        // The block's rendered text and its innerText differ in whitespace, so an
-        // absolute index cannot be used raw. Walk the text nodes accumulating
-        // NORMALISED length and stop at the node containing the target offset —
-        // then search within that node only, which is short enough that the
-        // first match in it is the right one.
-        var want = (sentenceAt == null ? -1 : sentenceAt + charIndex);
-        var walker = doc.createTreeWalker(node, global.NodeFilter.SHOW_TEXT, null);
-        var t, run = 0, best = null, bestAt = -1;
+        var walker = doc.createTreeWalker(node, global.NodeFilter.SHOW_TEXT, null), t, seen = 0;
         while ((t = walker.nextNode())) {
-          var v = t.nodeValue || '';
-          var at = v.indexOf(word);
-          if (at >= 0) {
-            // the first match at or after the offset we are looking for wins;
-            // if we never reach it, the last match before it is the fallback
-            if (want < 0 || run + at >= want - 2) { best = t; bestAt = at; break; }
-            if (!best) { best = t; bestAt = at; }
+          if (t.parentNode && t.parentNode.closest && t.parentNode.closest('.dv-reader')) continue;
+          var re = /\S+/g, m;
+          while ((m = re.exec(t.nodeValue))) {
+            if (seen === k) {
+              var rng = doc.createRange();
+              rng.setStart(t, m.index); rng.setEnd(t, m.index + m[0].length);
+              var sp = el('span', 'dv-word');
+              rng.surroundContents(sp);
+              wordSpan = sp;
+              return;
+            }
+            seen++;
           }
-          run += v.replace(/\s+/g, ' ').length;
         }
-        if (!best) return;
-        var rng = doc.createRange();
-        rng.setStart(best, bestAt); rng.setEnd(best, bestAt + word.length);
-        var sp = el('span', 'dv-word');
-        rng.surroundContents(sp);
-        wordSpan = sp;
       } catch (e) { wordSpan = null; }
+    }
+    function setWord(k) {
+      if (k === wi) return;
+      wi = k;
+      markWordIndex(blocks[bi] && blocks[bi].node, k);
+      markList();
     }
     function clearWord() {
       if (!wordSpan) return;
@@ -626,42 +694,238 @@
       wordSpan = null;
     }
 
-    var listEl = pnl.querySelector('[data-a="list"]');
+    // ── the playlist ─────────────────────────────────────────────────────
     function buildList() {
       listEl.innerHTML = '';
       blocks.forEach(function (b, k) {
         var li = doc.createElement('li');
         li.dataset.k = k;
-        li.innerHTML = '<span class="k">' + (k + 1) + '</span>' +
-          '<span class="x"></span><span class="g">' + b.tag + '</span>';
-        li.querySelector('.x').textContent = b.text.slice(0, 90);
+        li.innerHTML = '<span class="k">' + (k + 1) + '</span><span class="x"></span><span class="g">' + b.tag + '</span>';
+        var x = li.querySelector('.x');
+        b.words.forEach(function (w, i) {
+          var sp = el('span', 'w'); sp.textContent = w; x.appendChild(sp);
+          if (i < b.words.length - 1) x.appendChild(doc.createTextNode(' '));
+        });
         li.title = b.text.slice(0, 220) + (b.text.length > 220 ? '…' : '');
         listEl.appendChild(li);
       });
     }
     listEl.addEventListener('click', function (e) {
       var li = e.target.closest && e.target.closest('li'); if (!li) return;
-      if (btn.dataset.mute) return;
+      if (btn.dataset.mute && !fileMode()) return;
       jumpTo(+li.dataset.k, true);
     });
+    var lastMark = '';
     function markList() {
+      var sig = bi + ':' + wi;
+      if (sig === lastMark) return;
+      lastMark = sig;
       [].forEach.call(listEl.children, function (li, k) {
         li.setAttribute('aria-current', k === bi ? 'true' : 'false');
         li.classList.toggle('done', k < bi);
       });
-      var cur = listEl.children[bi];
-      if (cur && !pnl.hidden) { try { cur.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
+      var row = listEl.children[bi];
+      if (row) {
+        var ws = row.querySelectorAll('.w'), onEl = null;
+        for (var i = 0; i < ws.length; i++) {
+          ws[i].classList.toggle('on', i === wi);
+          ws[i].classList.toggle('said', wi >= 0 && i < wi);
+          if (i === wi) onEl = ws[i];
+        }
+        if (!pnl.hidden && !tlDrag) { try { (onEl || row).scrollIntoView({ block: 'nearest' }); } catch (e) {} }
+      }
     }
 
+    // ── the timeline ─────────────────────────────────────────────────────
+    function elapsedSeconds() { return fileMode() && au ? partBefore(pi) + (au.currentTime || 0) : 0; }
+    function fraction() {
+      if (fileMode() && A && A.seconds) return clamp(elapsedSeconds() / A.seconds, 0, 1);
+      return totalSent ? clamp(doneSent / totalSent, 0, 1) : 0;
+    }
+    function drawTicks() {
+      tlTicks.innerHTML = '';
+      var n = blocks.length;
+      if (n < 2) return;
+      var frag = doc.createDocumentFragment(), made = 0;
+      if (fileMode() && A.seconds) {
+        // measured: the second each block begins, across the parts
+        var run = 0;
+        A.parts.forEach(function (pt) {
+          (pt.marks || []).forEach(function (mk) {
+            if (made > 160) return;
+            var pb = pageBlockOf(mk.block);
+            if (pb < 0) return;
+            var t = el('i', 'tick' + (/^h[1-4]$/.test(blocks[pb] && blocks[pb].tag) ? ' h' : ''));
+            t.style.left = ((run + mk.at) / A.seconds * 100).toFixed(3) + '%';
+            frag.appendChild(t); made++;
+          });
+          run += pt.seconds || 0;
+        });
+      } else {
+        // live: no clock, so the ticks are sentence counts — where each block begins in the reading
+        for (var k = 1; k < n && made < 160; k++) {
+          var t2 = el('i', 'tick' + (/^h[1-4]$/.test(blocks[k].tag) ? ' h' : ''));
+          t2.style.left = (sentBefore(k) / totalSent * 100).toFixed(3) + '%';
+          frag.appendChild(t2); made++;
+        }
+      }
+      tlTicks.appendChild(frag);
+    }
+    function paintTimeline(f) {
+      var pct = (f * 100).toFixed(2) + '%';
+      tlFill.style.width = pct; tlKnob.style.left = pct;
+      tl.setAttribute('aria-valuenow', Math.round(f * 100));
+      if (fileMode() && A) {
+        tEl.textContent = mmss(f * A.seconds); tTot.textContent = mmss(A.seconds);
+        tMid.textContent = 'block ' + (bi + 1) + ' / ' + blocks.length;
+        tl.setAttribute('aria-valuetext', mmss(f * A.seconds) + ' of ' + mmss(A.seconds));
+      } else {
+        tEl.textContent = 'block ' + (bi + 1); tTot.textContent = blocks.length + ' blocks';
+        tMid.textContent = totalSent ? Math.round(f * 100) + '%' : '';
+        tl.setAttribute('aria-valuetext', 'block ' + (bi + 1) + ' of ' + blocks.length);
+      }
+    }
+    // what a point on the track means, in the current lane
+    function describeAt(f) {
+      if (fileMode() && A) return mmss(f * A.seconds);
+      var k = clamp(Math.floor(f * blocks.length), 0, blocks.length - 1);
+      return 'block ' + (k + 1);
+    }
+    function seekFraction(f, andPlay) {
+      f = clamp(f, 0, 1);
+      if (fileMode() && A && A.seconds) {
+        var want = f * A.seconds, run = 0;
+        for (var k = 0; k < A.parts.length; k++) {
+          var d = A.parts[k].seconds || 0;
+          if (run + d > want || k === A.parts.length - 1) {
+            var off = Math.max(0, Math.min(want - run, d - 0.25));
+            var go = function () {
+              try { au.currentTime = off; } catch (e) {}
+              onTime();
+              if (andPlay && !playing) { play(); }
+            };
+            if (k !== pi || !au || !au.src) loadPart(k, false).then(go); else go();
+            return;
+          }
+          run += d;
+        }
+        return;
+      }
+      // live synthesis has no clock, so the fraction lands on a block
+      jumpTo(clamp(Math.floor(f * blocks.length), 0, blocks.length - 1), andPlay);
+    }
+    var tlDrag = false;
+    function tlFrac(e) {
+      var r = tl.getBoundingClientRect();
+      return clamp((e.clientX - r.left) / Math.max(1, r.width), 0, 1);
+    }
+    tl.addEventListener('pointerdown', function (e) {
+      if (e.button != null && e.button !== 0) return;
+      tlDrag = { was: playing, f: tlFrac(e) };
+      tl.classList.add('drag');
+      if (tl.setPointerCapture) { try { tl.setPointerCapture(e.pointerId); } catch (x) {} }
+      paintTimeline(tlDrag.f);
+      tlTip.style.left = (tlDrag.f * 100) + '%'; tlTip.textContent = describeAt(tlDrag.f);
+      e.preventDefault();
+    });
+    tl.addEventListener('pointermove', function (e) {
+      if (!tlDrag) return;
+      tlDrag.f = tlFrac(e);
+      paintTimeline(tlDrag.f);
+      tlTip.style.left = (tlDrag.f * 100) + '%'; tlTip.textContent = describeAt(tlDrag.f);
+    });
+    function tlEnd(e) {
+      if (!tlDrag) return;
+      var f = tlDrag.f, was = tlDrag.was;
+      tlDrag = false; tl.classList.remove('drag');
+      seekFraction(f, was);
+    }
+    tl.addEventListener('pointerup', tlEnd);
+    tl.addEventListener('pointercancel', tlEnd);
+    tl.addEventListener('keydown', function (e) {
+      var step = fileMode() ? (5 / Math.max(1, A.seconds)) : (1 / Math.max(1, blocks.length));
+      var f = fraction();
+      if (e.key === 'ArrowRight' || e.key === 'ArrowUp') f += step;
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') f -= step;
+      else if (e.key === 'Home') f = 0;
+      else if (e.key === 'End') f = 0.999;
+      else if (e.key === ' ' || e.key === 'Enter') { playing ? pause() : play(); e.preventDefault(); return; }
+      else return;
+      e.preventDefault();
+      seekFraction(f, playing);
+    });
+
     function progress() {
-      line.style.width = (totalSent ? clamp(doneSent / totalSent, 0, 1) * 100 : 0).toFixed(2) + '%';
-      count.textContent = (bi + 1) + ' / ' + blocks.length;
+      if (!tlDrag) paintTimeline(fraction());
       title.textContent = playing && blocks[bi] ? blocks[bi].tag.toUpperCase() + ' · reading' : srcLabel;
       markList();
     }
 
-    // Chrome pauses synthesis after ~15s and does not resume on its own. The documented mitigation is
-    // to nudge it; it is a harmless no-op on engines that do not need it.
+    // ── the scope ────────────────────────────────────────────────────────
+    // Built lazily from a gesture (an AudioContext made earlier is born suspended). Only file mode has
+    // an element to tap; live mode draws the flat line and the label says why.
+    var actx = null, gainNode = null, analyser = null, srcNode = null, deckVol = 1;
+    var scopeRAF = 0, scopeBuf = null;
+    function ensureGraph() {
+      if (actx) return true;
+      if (!fileMode()) return false;
+      ensureAudio();
+      if (!au) return false;
+      var AC = global.AudioContext || global.webkitAudioContext;
+      if (!AC) return false;
+      try {
+        actx = new AC();
+        srcNode = actx.createMediaElementSource(au);
+        gainNode = actx.createGain(); gainNode.gain.value = deckVol;
+        analyser = actx.createAnalyser(); analyser.fftSize = 1024; analyser.smoothingTimeConstant = 0.6;
+        srcNode.connect(gainNode); gainNode.connect(analyser); analyser.connect(actx.destination);
+        scopeBuf = new Uint8Array(analyser.fftSize);
+      } catch (e) { actx = null; return false; }
+      return true;
+    }
+    function scopeSize() {
+      var r = scopeC.parentNode.getBoundingClientRect();
+      var dpr = Math.min(2, global.devicePixelRatio || 1);
+      var w = Math.max(1, Math.round(r.width * dpr)), h = Math.max(1, Math.round(r.height * dpr));
+      if (scopeC.width !== w || scopeC.height !== h) { scopeC.width = w; scopeC.height = h; }
+      return { w: w, h: h, dpr: dpr };
+    }
+    function scopeFrame() {
+      scopeRAF = 0;
+      if (pnl.hidden) return;
+      var g = scopeC.getContext('2d'); if (!g) return;
+      var s = scopeSize(), w = s.w, h = s.h;
+      g.clearRect(0, 0, w, h);
+      // baseline
+      g.strokeStyle = 'rgba(255,255,255,.08)'; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(0, h / 2 + 0.5); g.lineTo(w, h / 2 + 0.5); g.stroke();
+      var live = playing && fileMode() && analyser && !reduced;
+      if (live) {
+        analyser.getByteTimeDomainData(scopeBuf);
+        var grad = g.createLinearGradient(0, 0, w, 0);
+        grad.addColorStop(0, 'rgb(34,211,238)'); grad.addColorStop(1, 'rgb(157,78,221)');
+        g.strokeStyle = grad; g.lineWidth = Math.max(1, 1.25 * s.dpr);
+        g.shadowColor = 'rgba(34,211,238,.45)'; g.shadowBlur = 4 * s.dpr;
+        g.beginPath();
+        var n = scopeBuf.length, step = w / (n - 1);
+        for (var i = 0; i < n; i++) {
+          var y = (scopeBuf[i] / 128 - 1) * (h * 0.46) + h / 2;
+          if (i === 0) g.moveTo(0, y); else g.lineTo(i * step, y);
+        }
+        g.stroke();
+        g.shadowBlur = 0;
+        scopeRAF = global.requestAnimationFrame(scopeFrame);
+      } else {
+        g.strokeStyle = fileMode() ? 'rgba(34,211,238,.55)' : 'rgba(255,255,255,.22)';
+        g.lineWidth = Math.max(1, 1 * s.dpr);
+        g.beginPath(); g.moveTo(0, h / 2 + 0.5); g.lineTo(w, h / 2 + 0.5); g.stroke();
+        if (playing && fileMode() && !analyser) scopeRAF = global.requestAnimationFrame(scopeFrame);
+      }
+    }
+    function scopeStart() { if (!scopeRAF) scopeRAF = global.requestAnimationFrame(scopeFrame); }
+
+    // Chrome pauses synthesis after ~15 s and does not resume on its own; nudging it is a harmless
+    // no-op elsewhere.
     var watchdog = 0;
     function guard(on) {
       clearInterval(watchdog);
@@ -681,25 +945,13 @@
         if (bi >= blocks.length) { finish(); return; }
         b = blocks[bi];
       }
-      if (si === 0) { light(b); b._at = 0; }
+      if (si === 0) light(b);
       var text = b.sentences[si];
-      // WHERE THIS SENTENCE SITS IN THE BLOCK.
-      // markWord used to find the word with indexOf on the block, which returns
-      // the FIRST occurrence — so in "the voice is the reference the voice is
-      // not edited" every "the" lit the first one and the highlight sat still
-      // while the reading moved on. It looked sloppy because it WAS: the finger
-      // was pointing at a different instance of the right word.
-      // The search now starts from a cursor that advances sentence by sentence,
-      // so the occurrence lit is the occurrence being said.
-      var sAt = b.text.indexOf(text, b._at || 0);
-      if (sAt < 0) sAt = b.text.indexOf(text);          // punctuation restored differently
-      if (sAt < 0) sAt = b._at || 0;
-      b._at = sAt + text.length;
       var u = DVVoices.utter(text, { voice: state.voice, rate: state.rate });
       cur = u;
       u.onboundary = function (e) {
         if (e.name && e.name !== 'word') return;
-        markWord(b.node, text, e.charIndex, e.charLength, sAt);
+        setWord(wordIndexAt(b, si, e.charIndex || 0));
       };
       u.onend = function () { if (cur !== u) return; step(); };
       u.onerror = function () { if (cur !== u) return; step(); };
@@ -707,31 +959,40 @@
       progress();
     }
     function step() { clearWord(); doneSent++; si++; progress(); say(); }
-    function finish() { stop(); bi = 0; si = 0; doneSent = 0; progress(); }
+    function finish() { stop(); bi = 0; si = 0; doneSent = 0; if (au && fileMode()) { pi = 0; } progress(); }
 
     function play() {
       if (playing) return;
+      if (!fileMode() && !liveCanSpeak()) return;
       playing = true; pnl.classList.add('playing');
       playB.innerHTML = '&#10073;&#10073;'; playB.title = 'pause';
-      // the LISTEN button is repainted from stop() and pause() but was never
-      // repainted from HERE, so it sat on LISTEN through the entire reading —
-      // the one state it exists to tell you about
       paintBtn();
       if (fileMode()) {
-        if (!au.src) loadPart(pi, true); else au.play().catch(function () { fallToLive('playback was refused'); });
+        ensureGraph();
+        if (actx && actx.state === 'suspended') { try { actx.resume(); } catch (e) {} }
+        if (au.src) {
+          au.play().then(function () { warmAll(); scopeStart(); clockStart(); }, function (err) {
+            if (err && err.name === 'NotAllowedError') { refused(); return; }
+            fallToLive('playback was refused');
+          });
+        } else {
+          loadPart(pi, true).then(function () { scopeStart(); clockStart(); });
+        }
         progress(); return;
       }
       guard(true);
+      scopeStart();
       if (synth.paused && synth.speaking) { synth.resume(); progress(); return; }
       say();
     }
     function pause() {
       playing = false; pnl.classList.remove('playing');
       playB.innerHTML = '&#9654;'; playB.title = 'play';
-      if (fileMode()) { try { au.pause(); } catch (e) {} progress(); return; }
+      paintBtn();
+      if (fileMode()) { try { au.pause(); } catch (e) {} progress(); scopeStart(); return; }
       guard(false);
       try { synth.pause(); } catch (e) {}
-      progress(); paintBtn();
+      progress(); scopeStart();
     }
     function stop() {
       playing = false; pnl.classList.remove('playing');
@@ -739,19 +1000,20 @@
       if (fileMode() && au) { try { au.pause(); au.currentTime = 0; } catch (e) {} }
       guard(false);
       cur = null;
-      try { synth.cancel(); } catch (e) {}
-      unlight(); progress(); paintBtn();
+      try { if (hasSynth) synth.cancel(); } catch (e) {}
+      unlight(); progress(); paintBtn(); scopeStart();
     }
     function jumpTo(n, andPlay) {
       var was = playing;
       bi = clamp(n, 0, blocks.length - 1);
       if (fileMode()) {
-        // seek: find the part holding this block, and the second it begins inside it — measured
+        var rb = renderBlockOf(bi);
+        if (rb == null || rb < 0) { light(blocks[bi]); progress(); return; }   // this block was never recorded
         for (var k = 0; k < A.parts.length; k++) {
           var pt = A.parts[k];
-          if (bi < pt.from || bi > pt.to) continue;
+          if (rb < pt.from || rb > pt.to) continue;
           var at = 0;
-          for (var j = 0; j < pt.marks.length; j++) if (pt.marks[j].block <= bi) at = pt.marks[j].at;
+          for (var j = 0; j < pt.marks.length; j++) if (pt.marks[j].block <= rb) at = pt.marks[j].at;
           var go = function () { try { au.currentTime = at; } catch (e) {} if (was || andPlay) { playing = false; play(); } };
           if (k !== pi || !au.src) loadPart(k, false).then(go); else go();
           break;
@@ -765,8 +1027,8 @@
       si = 0;
       doneSent = sentBefore(bi);                 // the line never claims progress that was not made
       light(blocks[bi]); progress();
-      if (was || andPlay) { playing = false; play(); }    // picking a track means play THAT track;
-    }                                                     // stepping while paused stays paused
+      if (was || andPlay) { playing = false; play(); }
+    }
     function jump(d) { jumpTo(bi + d); }
 
     // ── the panel's own controls ─────────────────────────────────────────
@@ -774,138 +1036,74 @@
     function openPanel(open) {
       if (open === undefined) open = pnl.hidden;
       pnl.hidden = !open;
-      // restore on first SHOW: at mount the panel is hidden, and a hidden panel
-      // measures 0x0 so nothing can be clamped against it
-      if (open && !restored) { restored = true; try { panelRestore(); } catch (e) {} }
       btn.classList.toggle('on', open);
       btn.setAttribute('aria-expanded', String(open));
+      if (open && !restored) { restored = true; try { panelRestore(); } catch (e) {} }
+      if (open) { drawTicks(); progress(); scopeStart(); }
       return open;
     }
     btn.addEventListener('click', function () {
-      // READING? THEN THIS IS STOP. The button says STOP, so it must stop —
-      // not open the panel again, which is what it did when its only job was
-      // to be a LISTEN button.
-      if (playing) { stop(); return; }
-      // LISTEN READS. That is the whole contract, and it used to be conditional:
-      // the panel was TOGGLED and playback started only if the panel had been
-      // shut. So if anything had already opened it — autostart, a previous
-      // press, a restored layout — pressing LISTEN closed the panel instead of
-      // reading, which is the opposite of what the word says. Closing is the ×
-      // button's job. LISTEN opens if needed and always begins.
+      if (playing) { stop(); return; }               // READING? THEN THIS IS STOP.
       openPanel(true);
-      if (btn.dataset.mute) {                          // the player opens, and states the difficulty
+      if (btn.dataset.mute && !fileMode()) {
         title.textContent = 'no voice on this platform';
-        meta.innerHTML = '<span class="dvr-lock">&#9679; this browser exposes a speech synthesiser but ' +
-          'enumerates <b>no voices</b></span><br>every utterance would be dropped in silence, so nothing ' +
-          'is played rather than appearing to play.<br>On Linux: install <b>speech-dispatcher</b> and a ' +
-          'voice such as <b>espeak-ng</b>. On macOS, iOS, Windows and Android voices ship with the system.' +
-          '<br>The playlist below is what would be read.';
+        scopeL.textContent = 'no voices installed';
         return;
       }
       if (!playing) play();                            // one gesture: open AND read
     });
 
     pnl.addEventListener('click', function (e) {
-      var b = e.target.closest && e.target.closest('button'); if (!b) return;
+      var b = e.target.closest && e.target.closest('button'); if (!b || !b.dataset.a) return;
       var a = b.dataset.a;
       if (a === 'play') { playing ? pause() : play(); }
       else if (a === 'prev') jump(-1);
       else if (a === 'next') jump(1);
       else if (a === 'stop') finish();
-      else if (a === 'dl') { if (A) DVDocAudio.download(A); }
-      else if (a === 'shade') { pnl.classList.toggle('shaded'); b.innerHTML = pnl.classList.contains('shaded') ? '&#9633;' : '&#9472;'; }
+      else if (a === 'dl') { if (A && global.DVDocAudio && dl.getAttribute('aria-disabled') !== 'true') DVDocAudio.download(A); }
+      else if (a === 'shade') { pnl.classList.toggle('shaded'); b.innerHTML = pnl.classList.contains('shaded') ? '&#9633;' : '&#9472;'; panelSave(); }
       else if (a === 'close') openPanel(false);
     });
-    // CHANGING VOICE CONTINUES FROM WHERE YOU WERE, TO THE SECOND.
-    //
-    // This used to keep the BLOCK and start it again from its beginning, which
-    // is right to within a paragraph and wrong to within about twenty seconds —
-    // long enough that you hear a sentence you have already heard and conclude
-    // the thing restarted. The position is now carried as a FRACTION of the
-    // whole, because the voices differ in pace: the same reading is 348 s in
-    // neural and 582 s in OVERLORD, so a timestamp does not survive the
-    // crossing, and 41% of the way through does.
-    //
-    // The old audio also keeps playing until the new manifest is in hand. That
-    // lookup is a static file here and usually takes milliseconds, but on a slow
-    // connection it is the difference between a seamless change and a gap, and
-    // there is no reason to pay it.
-    function elapsedFraction() {
-      if (fileMode() && A && A.seconds) {
-        return clamp((partBefore(pi) + (au ? au.currentTime || 0 : 0)) / A.seconds, 0, 1);
-      }
-      return blocks.length ? clamp(bi / blocks.length, 0, 1) : 0;
-    }
-    function resumeAtFraction(f, andPlay) {
-      if (fileMode() && A && A.seconds) {
-        var want = f * A.seconds, run = 0;
-        for (var k = 0; k < A.parts.length; k++) {
-          var d = A.parts[k].seconds || 0;
-          if (run + d > want || k === A.parts.length - 1) {
-            var off = want - run;
-            var go = function () {
-              try { au.currentTime = Math.max(0, Math.min(off, (au.duration || d) - 0.25)); } catch (e) {}
-              if (andPlay) { playing = false; play(); }
-            };
-            if (k !== pi || !au || !au.src) loadPart(k, false).then(go); else go();
-            return;
-          }
-          run += d;
-        }
-      }
-      // live synthesis has no clock, so the fraction lands on a block
-      bi = clamp(Math.floor(f * blocks.length), 0, blocks.length - 1);
-      si = 0;
-      if (andPlay) { playing = false; play(); } else progress();
-    }
+
+    // CHANGING VOICE CONTINUES FROM WHERE YOU WERE. The position is carried as a fraction of the
+    // whole, because the voices differ in pace and a timestamp does not survive the crossing. The old
+    // audio keeps playing until the new manifest is in hand.
     sel.addEventListener('change', function () {
-      state.voice = sel.value; save(); describe();
-      var was = playing, f = elapsedFraction();
-      // do NOT stop yet — the current voice keeps reading through the lookup
+      state.voice = sel.value;
+      var was = playing, f = fraction();
       lookForAudio().then(function () {
-        if (fileMode() || DVVoices.usable()) {
-          delete btn.dataset.mute;
-        } else {
-          btn.dataset.mute = '1';
-        }
+        if (fileMode() || liveCanSpeak()) delete btn.dataset.mute; else btn.dataset.mute = '1';
         stop();
-        resumeAtFraction(f, was);
+        seekFraction(f, was);
         paintBtn();
       });
     });
     rate.addEventListener('input', function () {
       state.rate = +rate.value;
-      var v = DVVoices.get(state.voice);
-      title.textContent = 'rate ×' + state.rate.toFixed(2) + ' · ' + (v.prosody.rate * state.rate).toFixed(2);
+      rateVal.textContent = '×' + state.rate.toFixed(2);
+      if (fileMode() && au) { try { au.playbackRate = state.rate; } catch (e) {} }
     });
     rate.addEventListener('change', function () {
       save();
+      if (fileMode()) return;                    // the element took the new rate live
       if (playing) { var b = bi, s = si, d = doneSent; stop(); bi = b; si = s; doneSent = d; play(); }
       else progress();
     });
 
     // ── WHERE YOU PUT IT, AND HOW BIG YOU MADE IT ────────────────────────
-    //
-    // Two traps this file has already fallen into once, both recorded here so the
-    // next person does not repeat them:
-    //
-    //   1. NEVER SAVE WHILE HIDDEN. A hidden panel measures 0x0 at 0,0, so a save
-    //      triggered while closed writes {0,0} and the panel opens in the corner
-    //      at zero size next time.
-    //   2. CLAMP AGAINST THE PANEL, NOT A CONSTANT. An earlier clamp kept 80px
-    //      on screen, which is a title bar and nothing else — you could not reach
-    //      the controls to move it back. The restore clamps so the whole panel
-    //      is inside the viewport where it fits, and to a generous margin where
-    //      it does not.
-    var PKEY = 'dv_reader_panel_v1';
+    // Two traps, both fallen into once: never save while hidden (a hidden panel measures 0x0), and
+    // clamp against the panel rather than a constant (or it can be parked with only a title bar
+    // reachable).
     function panelSave() {
-      if (pnl.hidden) return;                                  // trap 1
+      if (pnl.hidden) return;
       var r = pnl.getBoundingClientRect();
-      if (r.width < 40 || r.height < 20) return;               // nothing real to save
+      if (r.width < 40 || r.height < 20) return;
       try {
         global.localStorage.setItem(PKEY, JSON.stringify({
           left: Math.round(r.left), top: Math.round(r.top),
-          w: Math.round(r.width), h: Math.round(r.height),
+          w: Math.round(r.width), h: pnl.classList.contains('shaded') ? 0 : Math.round(r.height),
+          shaded: pnl.classList.contains('shaded') ? 1 : 0,
+          docked: pnl.style.left ? 0 : 1
         }));
       } catch (e) {}
     }
@@ -914,124 +1112,69 @@
       try { v = JSON.parse(global.localStorage.getItem(PKEY) || 'null'); } catch (e) {}
       if (!v) return;
       var vw = global.innerWidth, vh = global.innerHeight;
-      var w = clamp(+v.w || 312, 264, Math.round(vw * 0.96));
+      if (vw <= 520) return;                       // phones: the stylesheet lays it out
+      var w = clamp(+v.w || 332, 280, Math.round(vw * 0.96));
       var h = clamp(+v.h || 0, 0, Math.round(vh * 0.88));
       pnl.style.width = w + 'px';
-      if (h > 96) pnl.style.height = h + 'px';
-      // trap 2: the whole panel inside the viewport where it fits
+      if (h > 120) pnl.style.height = h + 'px';
+      if (v.shaded) { pnl.classList.add('shaded'); var sb = pnl.querySelector('[data-a="shade"]'); if (sb) sb.innerHTML = '&#9633;'; }
+      if (v.docked) { pnl.style.left = pnl.style.top = ''; pnl.style.right = '18px'; pnl.style.bottom = '18px'; return; }
       pnl.style.left = clamp(+v.left || 0, 0, Math.max(0, vw - w)) + 'px';
-      pnl.style.top = clamp(+v.top || 0, 0, Math.max(0, vh - Math.min(h || 120, vh - 40))) + 'px';
+      pnl.style.top = clamp(+v.top || 0, 0, Math.max(0, vh - Math.min(h || 140, vh - 40))) + 'px';
       pnl.style.right = 'auto'; pnl.style.bottom = 'auto';
     }
-    // The resize handle is the browser's, so there is no drag event to hook —
-    // ResizeObserver is how you find out it happened, and it also catches the
-    // window changing under a remembered size.
+    function dock() {
+      pnl.style.left = pnl.style.top = ''; pnl.style.right = '18px'; pnl.style.bottom = '18px';
+      panelSave();
+    }
     if (typeof global.ResizeObserver !== 'undefined') {
       var rzT = 0;
-      new global.ResizeObserver(function () {
-        clearTimeout(rzT);
-        rzT = setTimeout(panelSave, 220);        // the drag fires continuously
-      }).observe(pnl);
+      new global.ResizeObserver(function () { clearTimeout(rzT); rzT = setTimeout(function () { panelSave(); scopeStart(); }, 220); }).observe(pnl);
     }
-    global.addEventListener('resize', function () {
-      if (!pnl.hidden) panelRestore();           // keep a remembered box on screen
-    });
+    global.addEventListener('resize', function () { if (!pnl.hidden) { panelRestore(); scopeStart(); } });
 
-    // drag the header
+    // DRAG FROM ANYWHERE THAT IS NOT A CONTROL. The header is the obvious grip and says so, but the
+    // panel is small and a reader whose article is behind it should be able to take hold of any
+    // quiet part of it — the scope, the times, a gap — and move it out of the way.
     var drag = null;
-    hd.addEventListener('pointerdown', function (e) {
-      if (e.target.tagName === 'BUTTON') return;
+    function dragTarget(e) {
+      var t = e.target;
+      if (!t || !t.closest) return false;
+      if (t.closest('button,select,input,a,li,.dvr-tl,.dvr-list,#listen-deck,.dvr-cache')) return false;
+      return !!t.closest('.dv-reader-panel');
+    }
+    pnl.addEventListener('pointerdown', function (e) {
+      if (e.button != null && e.button !== 0) return;
+      if (!dragTarget(e)) return;
       var r = pnl.getBoundingClientRect();
+      // the resize corner belongs to the browser
+      if (e.clientX > r.right - 18 && e.clientY > r.bottom - 18) return;
       pnl.style.left = r.left + 'px'; pnl.style.top = r.top + 'px';
       pnl.style.right = 'auto'; pnl.style.bottom = 'auto';
-      drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
-      hd.classList.add('dragging');
-      if (hd.setPointerCapture) hd.setPointerCapture(e.pointerId);
+      drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, moved: false };
+      pnl.classList.add('moving');
+      if (pnl.setPointerCapture) { try { pnl.setPointerCapture(e.pointerId); } catch (x) {} }
       e.preventDefault();
     });
-    hd.addEventListener('pointermove', function (e) {
+    pnl.addEventListener('pointermove', function (e) {
       if (!drag) return;
-      pnl.style.left = clamp(e.clientX - drag.dx, 0, global.innerWidth - pnl.offsetWidth) + 'px';
-      pnl.style.top = clamp(e.clientY - drag.dy, 0, global.innerHeight - 44) + 'px';
+      drag.moved = true;
+      pnl.style.left = clamp(e.clientX - drag.dx, 0, Math.max(0, global.innerWidth - pnl.offsetWidth)) + 'px';
+      pnl.style.top = clamp(e.clientY - drag.dy, 0, Math.max(0, global.innerHeight - 44)) + 'px';
     });
-    function endDrag() { if (drag) { drag = null; hd.classList.remove('dragging'); panelSave(); } }
-    hd.addEventListener('pointerup', endDrag);
-    hd.addEventListener('pointercancel', endDrag);
+    function endDrag() { if (drag) { drag = null; pnl.classList.remove('moving'); panelSave(); } }
+    pnl.addEventListener('pointerup', endDrag);
+    pnl.addEventListener('pointercancel', endDrag);
+    hd.addEventListener('dblclick', function (e) { if (e.target.tagName !== 'BUTTON') dock(); });
 
     // a page left mid-sentence must not keep talking to an empty room
-    global.addEventListener('beforeunload', function () { try { synth.cancel(); } catch (e) {} });
-    doc.addEventListener('visibilitychange', function () { if (doc.hidden && playing) pause(); });
+    global.addEventListener('beforeunload', function () { try { if (hasSynth) synth.cancel(); } catch (e) {} });
+    doc.addEventListener('visibilitychange', function () { if (doc.hidden && playing && !fileMode()) pause(); });
 
-    // The button is not offered until it is known to work. A platform with the API and no voices drops
-    // every utterance in silence, and a LISTEN button that does nothing is worse than no button at all.
-    // The button is shown from the start — LISTEN is the point of the page and it should be findable
-    // immediately. What it must never do is pretend: a platform with the API and no installed voices
-    // drops every utterance in silence, so there the button STAYS and SAYS SO rather than disappearing
-    // (which reads as a broken page) or playing nothing (which reads as broken audio).
-    // A platform with no installed voices cannot do LIVE synthesis — but it can still play a document
-    // that was RENDERED ahead, because that is an ordinary audio file. So the store is consulted first
-    // and the button is only refused when there is neither a voice nor a rendering: exactly the case
-    // where nothing can be heard. (Gating the lookup behind usable() denied rendered audio to the one
-    // kind of machine that most needs it.)
-    btn.title = 'looking for audio…';
-    Promise.all([DVVoices.ready(), lookForAudio()]).then(function () {
-      buildList();
-      fillVoices();
-      if (fileMode()) {
-        btn.title = 'Open the player — this page is rendered, so it starts instantly and can be downloaded';
-        if (opts.autostart) autostart();
-        return;
-      }
-      if (!DVVoices.usable()) {
-        btn.dataset.mute = '1';
-        btn.innerHTML = '<span class="i">&#9654;</span>LISTEN &mdash; no voice installed';
-        btn.title = 'This browser has a speech synthesiser but no installed voices, and this page has ' +
-          'no rendered audio in this voice, so nothing can be spoken here. On Linux: install ' +
-          'speech-dispatcher and a voice such as espeak-ng. On macOS, iOS, Windows and Android voices ' +
-          'ship with the system.';
-        if (opts.onUnavailable) { try { opts.onUnavailable(btn); } catch (e) {} }
-        return;
-      }
-      btn.title = 'Open the player and read this page aloud';
-    });
     // ── THE AUDIO DECK CONTRACT ──────────────────────────────────────────
-    //
-    // The dreamknob rack (static/audio_rack.js) owns NO state. It reads
-    // window.listenState() and writes back through these globals, then re-reads
-    // on the "mindx:listen" event — the same contract the mindX player exposes,
-    // so one island serves both sites and a knob can never disagree with the
-    // plain control beside it. The panel works with the rack never loaded.
-    //
-    // GAIN ABOVE 1.0 NEEDS WEB AUDIO. An <audio> element's `volume` is an
-    // ATTENUATOR: it clamps at 1.0 and cannot make anything louder. ANCIENT is a
-    // whisper by design and is still the quietest voice in the cast after
-    // loudness normalisation, so the deck has to be able to amplify — which
-    // means a GainNode, which means a graph. It is built lazily, because
-    // constructing an AudioContext before a gesture gets it suspended.
-    var actx = null, gainNode = null, analyser = null, srcNode = null;
-    var deckVol = 1;
-    // NOT `ensureAudio` — that name already belongs to the function that creates the
-    // <audio> ELEMENT, and a second `function ensureAudio()` in this scope would win
-    // by hoisting and silently stop the element from ever being made. The graph is a
-    // different thing from the element and now says so.
-    function ensureGraph() {
-      if (actx) return true;
-      if (!fileMode()) return false;        // live synthesis has no element to tap
-      ensureAudio();                        // the element first — the graph needs a source
-      if (!au) return false;
-      var AC = global.AudioContext || global.webkitAudioContext;
-      if (!AC) return false;
-      try {
-        actx = new AC();
-        srcNode = actx.createMediaElementSource(au);
-        gainNode = actx.createGain(); gainNode.gain.value = deckVol;
-        analyser = actx.createAnalyser(); analyser.fftSize = 2048;
-        srcNode.connect(gainNode); gainNode.connect(analyser); analyser.connect(actx.destination);
-      } catch (e) { actx = null; return false; }
-      return true;
-    }
+    // The dreamknob rack owns no state: it reads window.listenState() and writes back through these
+    // globals, then re-reads on "mindx:listen". The panel works with the rack never loaded.
     function emit() { try { global.dispatchEvent(new global.Event('mindx:listen')); } catch (e) {} }
-
     global.listenState = function () {
       return {
         playing: playing, ready: fileMode() || liveCanSpeak(),
@@ -1045,23 +1188,14 @@
     };
     global.listenVol = function (v) {
       deckVol = clamp(+v || 0, 0, 4);
-      // Below 1.0 the element alone is enough and no graph is needed; above it,
-      // the element pins at 1.0 and the GainNode carries the rest.
       if (deckVol <= 1 && !actx) { if (au) au.volume = deckVol; }
       else if (ensureGraph()) { if (au) au.volume = 1; gainNode.gain.value = deckVol; }
       else if (au) { au.volume = Math.min(deckVol, 1); }
       emit();
     };
     global.listenSpeed = function (v) {
-      // THE SLIDER OWNS THE GRID, SO READ THE VALUE BACK OFF IT.
-      // The knob is continuous and the slider has step 0.02 from 0.6, so a knob
-      // value of 1.25 is not on the grid: the browser silently snapped the slider
-      // to a neighbour while state.rate kept 1.25, and the two faces of the one
-      // machine then disagreed — the exact thing this contract exists to prevent.
-      // Assigning and re-reading costs nothing and makes the input the authority
-      // on what its own value can be.
       rate.value = clamp(+v || 1, 0.6, 1.6);
-      state.rate = +rate.value;
+      state.rate = +rate.value; rateVal.textContent = '×' + state.rate.toFixed(2);
       save();
       if (fileMode() && au) { try { au.playbackRate = state.rate; } catch (e) {} }
       emit();
@@ -1072,86 +1206,55 @@
     };
     global.listenToggle = function () { if (playing) pause(); else play(); emit(); };
 
-    // the deck is an enhancement, and says so when it is not there
-    var deckOff = pnl.querySelector('[data-a="deckoff"]');
-    global.setTimeout(function () {
-      var host = pnl.querySelector('#listen-deck');
-      if (host && !host.firstChild && deckOff) {
-        deckOff.hidden = false;
-        deckOff.textContent = 'The instrument deck did not load. Every control it offers is ' +
-          'also here as a plain control — nothing is missing but the knobs.';
-      }
-    }, 4000);
-
     // ── AUTOSTART, WITH A BUFFER AND WITHOUT PRETENDING ──────────────────
-    //
-    // TWO HONEST CONSTRAINTS, BOTH HANDLED RATHER THAN HOPED PAST.
-    //
-    // 1. A browser will not start audio without a user gesture. Chrome makes an
-    //    exception once you have a history of playing media on the site, so this
-    //    WILL start for a returning reader and WILL NOT on a first visit — and
-    //    which of those you get is not knowable in advance. So it is attempted,
-    //    and a refusal is not treated as a failure: the panel is left open,
-    //    buffered, and one press from reading, with the button saying so. What it
-    //    must never do is sit on a play glyph having been refused.
-    //
-    // 2. Starting the instant the first byte lands gives you a sentence and then
-    //    a stall. So it waits for a BUFFER — enough decoded audio that the read
-    //    survives a slow moment — and the wait has a deadline, because a reader
-    //    on a poor connection would rather start late than not at all.
-    var AUTOSTART_BUFFER = 6;        // seconds of audio ahead before starting
-    var AUTOSTART_DEADLINE = 9000;   // ms after which we start with what we have
+    // A browser will not start audio without a gesture unless the site has a media history; the
+    // attempt is made, and a refusal leaves the panel open, buffered and one press from reading.
+    var AUTOSTART_BUFFER = 6, AUTOSTART_DEADLINE = 9000;
     function autostart() {
-      // an explicit opt-out, because a page that talks at you unbidden should
-      // always have a way to be told not to
-      try {
-        if (new global.URLSearchParams(global.location.search).get('autoplay') === '0') return;
-      } catch (e) {}
+      try { if (new global.URLSearchParams(global.location.search).get('autoplay') === '0') return; } catch (e) {}
       if (!A || !A.parts || !A.parts.length) return;
       ensureAudio();
       if (!au) return;
-      au.preload = 'auto';
       openPanel(true);
       var started = false, t0 = Date.now();
       function buffered() {
-        try {
-          if (!au.buffered || !au.buffered.length) return 0;
-          return au.buffered.end(au.buffered.length - 1) - (au.currentTime || 0);
-        } catch (e) { return 0; }
-      }
-      function go() {
-        if (started) return;
-        started = true;
-        clearInterval(iv);
-        playing = false;                       // play() returns early if it is already true
-        play();
-        // play() calls au.play() and swallows nothing — but the promise is where
-        // a refusal shows up, and this is the one place that needs to know.
-        try {
-          var pr = au.play();
-          if (pr && pr.then) {
-            pr.then(function () { paintBtn(); }).catch(function () {
-              // REFUSED. Not an error, and not something to hide: the audio is
-              // ready and one press away, so say exactly that.
-              playing = false;
-              pnl.classList.remove('playing');
-              playB.innerHTML = '&#9654;'; playB.title = 'play';
-              paintBtn();
-              modeEl.textContent = 'ready — press play';
-              modeEl.title = 'This browser will not start audio on its own until you have ' +
-                'interacted with the page. The reading is loaded and buffered; press play.';
-            });
-          }
-        } catch (e) {}
+        try { return au.buffered && au.buffered.length ? au.buffered.end(au.buffered.length - 1) - (au.currentTime || 0) : 0; }
+        catch (e) { return 0; }
       }
       var iv = setInterval(function () {
-        if (buffered() >= AUTOSTART_BUFFER || au.readyState >= 4 ||
-            Date.now() - t0 > AUTOSTART_DEADLINE) go();
+        if (started) return;
+        if (buffered() >= AUTOSTART_BUFFER || au.readyState >= 4 || Date.now() - t0 > AUTOSTART_DEADLINE) {
+          started = true; clearInterval(iv);
+          playing = false; play();
+        }
       }, 250);
-      // load the first part without playing it, so there is something to buffer
       loadPart(0, false);
     }
 
+    // The button is shown from the start — LISTEN is the point — but it must never pretend: a platform
+    // with the API and no voices drops every utterance in silence, so there it says so. A rendered
+    // page still plays there, because that is an ordinary audio file.
+    btn.title = 'looking for audio…';
+    Promise.all([DVVoices.ready(), lookForAudio()]).then(function () {
+      buildList();
+      fillVoices();
+      drawTicks();
+      if (fileMode()) {
+        btn.title = 'Open the player — this page is rendered, so it starts instantly and can be downloaded';
+        if (opts.autostart) autostart();
+        return;
+      }
+      if (!liveCanSpeak()) {
+        btn.dataset.mute = '1';
+        paintBtn();
+        btn.title = 'This browser has a speech synthesiser but no installed voices, and this page has no rendered ' +
+          'audio in this voice, so nothing can be spoken here. On Linux: install speech-dispatcher and a voice such ' +
+          'as espeak-ng. On macOS, iOS, Windows and Android voices ship with the system.';
+        if (opts.onUnavailable) { try { opts.onUnavailable(btn); } catch (e) {} }
+        return;
+      }
+      btn.title = 'Open the player and read this page aloud';
+    });
     function lookForAudio() {
       if (!global.DVDocAudio) { adoptManifest(null); return Promise.resolve(); }
       return DVDocAudio.manifest(docId, state.voice).then(adoptManifest).catch(function () { adoptManifest(null); });
@@ -1162,13 +1265,14 @@
       el: pnl, button: btn, blocks: blocks,
       play: play, pause: pause, stop: finish,
       next: function () { jump(1); }, prev: function () { jump(-1); },
-      voice: function (id) { if (id) { state.voice = id; sel.value = id; save(); describe(); } return state.voice; },
-      open: openPanel,
+      seek: function (f) { seekFraction(f, playing); },
+      voice: function (id) { if (id && id !== state.voice) { sel.value = id; sel.dispatchEvent(new global.Event('change')); } return state.voice; },
+      open: openPanel, dock: dock,
       destroy: function () { stop(); pnl.remove(); btn.remove(); }
     };
   }
 
-  var DV = { mount: mount, collect: collect, sentences: sentences, version: '1.0.0' };
+  var DV = { mount: mount, collect: collect, sentences: sentences, fingerprint: fingerprint, version: '2.1.0' };
   if (typeof module !== 'undefined' && module.exports) module.exports = DV;
   global.DVDocReader = DV;
 })(typeof window !== 'undefined' ? window : this);

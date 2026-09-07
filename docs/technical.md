@@ -106,8 +106,14 @@ a document. The alignment stretch is reported as a further detune, because it is
 | **LISTEN** | opens the panel **and reads**. Always. Closing is the × button's job. |
 | **LISTEN while reading** | becomes a red **STOP** — back to the top, not merely paused |
 | **voice change** | continues from where you were, carried as a FRACTION |
-| **panel** | draggable **and** resizeable, position and size remembered |
-| **AUDIO DECK** | open by default; the instruments and the fine controls together |
+| **alignment** | the manifest carries `blockFingerprints` (FNV-1a over normalised text, identical in `render_neural.py` and `DVDocReader.fingerprint`) and `blockWords`; the player fingerprints the page, maps render blocks to page blocks, and the badge says *rendered · page changed* when they differ. A manifest without fingerprints whose block count differs gets the same badge and a re-render note |
+| **clock** | in rendered mode the highlight is driven from `currentTime` on every animation frame (`timeupdate` is ~4 Hz and was up to 250 ms late), with a 100 ms lead for the eye |
+| **timeline** | drag, click or arrow keys. Rendered: seconds, ticks at the measured start of each block. Live: the blocks themselves — there is no clock, so it lands on a block. `reader.seek(fraction)` |
+| **scope** | an AnalyserNode on the rendered audio; a flat line labelled *no signal to tap* on live synthesis. Never a drawn waveform for a signal it cannot see |
+| **DOWNLOAD** | a labelled button; enabled only in rendered mode, its tooltip says how many files and how big. Disabled it says why |
+| **panel** | draggable from any part that is not a control, resizeable from the corner; double-click the title bar docks it; position, size and shade remembered (`dv_reader_panel_v2`) |
+| **voice text** | gone. The description of the voice ("the reference — not edited, rate, pitch") is not a control and was removed; the chooser names the voices and the scope shows the audio |
+| **AUDIO DECK** | `#listen-deck` is a hidden host inside the panel; the dreamknob rack fills it through `listenState()` / `listenVol` / `listenSpeed` / `listenVoice` / `listenToggle` and it shows only then |
 
 **LISTEN's contract is the word on it.** The handler used to TOGGLE the panel and start
 playback only if the panel had been shut — so anything that had already opened it

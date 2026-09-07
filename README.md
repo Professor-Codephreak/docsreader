@@ -73,24 +73,51 @@ content element is and what the headline is; the plugin hands the reader all
 three instead of letting it guess, and loads it only where it will be used.
 
 **[Download wordpress-reader.zip](https://deltaverse.pythai.net/wordpress-reader.zip)**
-· `sha256 05d308eb232f673383cba77afa270a8bb9f56646c9cad5a916fadf0821fff6a7`
+· `sha256 2cad5b89cd72d57fce423bea9f2f99ee7efa405940c0d450a12422e171d666ca`
 ([verify](https://deltaverse.pythai.net/wordpress-reader.zip.sha256)) · source in
-[`wordpress/plugin/`](wordpress/plugin/)
+[`wordpress/plugin/`](wordpress/plugin/) · v1.2.0
 
-Plugins → Add New → Upload Plugin → Activate, then Settings → Reader. Put one
-post ID in *Only these posts* to try it on a single article before turning it on
-everywhere; clear the field to enable it on all of them. An empty field means no
-restriction, so a half-finished setting cannot quietly switch the reader off.
+**Install.** Plugins → Add New Plugin → Upload Plugin → choose the zip → Install
+Now → Activate. That is the whole install: with the defaults, every post has
+LISTEN beside its headline. Settings → Reader is there when you want to change
+something.
+
+**Adding LISTEN to an article.** Three ways, and they compose:
+
+1. *Every article* (the default in Settings → Reader) — nothing to do; open any
+   post and look beside the headline.
+2. *Only articles I switch on* — pick that in Settings → Reader, then set the
+   **LISTEN** box in the editor sidebar of each article to *On*.
+3. Type `[listen]` into the text — the button lands exactly there, and the
+   reader is on for that article whatever the site setting says.
+   `[listen share="yes"]` brings SHARE along.
+
+*Off* in an article's LISTEN box always wins, so one article can be excluded.
+*Only these posts* (post IDs) is a quick way to try it on one article first;
+empty means no restriction, so a half-finished setting cannot quietly switch the
+reader off. *Button position* moves the default landing from the headline to a
+row above or below the text.
 
 There is still a no-install route — the same scripts in a footer `custom_html`
-widget, which is what the article ran on first:
+widget, which is what the article ran on first and still runs on. This is the
+widget as it is on rage.pythai.net, with the rendered-audio lane on:
 
 ```html
-<script>window.WPReader = { only: [1469], content: ".entry-content" };</script>
+<script>
+  window.WPReader = { only: [1469, 1428], content: ".entry-content", title: "h1.entry-title",
+                      audioRoot: "https://deltaverse.pythai.net/audio", share: true };
+  window.DV_AUDIO_ROOT = "https://deltaverse.pythai.net/audio";
+</script>
 <script src="https://deltaverse.pythai.net/engine/ngn/voices.js"></script>
 <script src="https://deltaverse.pythai.net/engine/ngn/doc-reader.js"></script>
+<script src="https://deltaverse.pythai.net/engine/ngn/doc-audio.js"></script>
 <script src="https://deltaverse.pythai.net/engine/ngn/wordpress-reader.js"></script>
 ```
+
+Drop the two `audioRoot` lines and `doc-audio.js` for the live-synthesis-only
+lane; the store only answers hosts it has been told about. Delete `only` to go
+site-wide. A widget, not post content: `wpautop` rewrites `<script>` in a post
+body.
 
 ```
 deltaverse/   the DeltaVerse reader — voice registry, panel, audio store, renderers
@@ -102,14 +129,25 @@ docs/         technical.md · explanation.md · usage.md
 
 ## What it does
 
-Give a page a **LISTEN** button that opens a panel and starts reading in the same
+Give a page a **LISTEN** button that opens a player and starts reading in the same
 gesture — an open panel with a silent play button asks you to press a second
-button to do the thing you already asked for.
+button to do the thing you already asked for. While it reads, the button says
+**STOP**, in red.
+
+The player is an instrument, not a notice. A **timeline** you take hold of and
+drag — seconds on rendered audio, blocks on live synthesis, with a tick where
+every block begins; an **oscilloscope** on the signal that is actually playing;
+a labelled **DOWNLOAD**; the voice and the rate; and the article as a track list,
+the row being read showing every word as it is said. Drag the player by any
+quiet part of it, resize it from the corner, double-click its title bar to send
+it back; it remembers where you left it.
 
 It reads from one of two places and always says which. **live** is the browser's
-own synthesiser, on-device, nothing downloaded. **file** is audio rendered ahead
-into a store, which starts instantly, seeks, and can be downloaded — and which
-works on a machine with no installed speech voices at all.
+own synthesiser, on-device, nothing downloaded — and the scope shows a flat line
+that says *no signal to tap*, because speechSynthesis exposes no audio graph and
+this does not draw a waveform it cannot see. **rendered** is audio made ahead
+into a store, which starts instantly, seeks to the second, downloads, and works
+on a machine with no installed speech voices at all.
 
 ## The voices
 
@@ -140,7 +178,11 @@ markup from the fetched page ever enters the reader's: the response is parsed in
 an inert document and only *text* comes out.
 
 **On WordPress** — `wordpress.reader`, one custom-HTML widget in a footer region,
-and every article gets a LISTEN button.
+and every article gets a LISTEN button and a SHARE button. SHARE shares from the
+image: the page's own Open Graph card (title, description, featured image), as
+a file through the device share sheet where the platform allows, otherwise a
+menu of networks, copy link and save image. `share: false` turns it off,
+`'title'` or `'image'` keeps one of the two controls.
 
 ## Why wordpress.reader exists, and why it is not a fetcher
 

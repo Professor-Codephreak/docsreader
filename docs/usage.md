@@ -58,21 +58,43 @@ WordPress sites.
 ### The plugin
 
 [wordpress-reader.zip](https://deltaverse.pythai.net/wordpress-reader.zip)
-(`sha256 05d308eb232f673383cba77afa270a8bb9f56646c9cad5a916fadf0821fff6a7`),
+(`sha256 2cad5b89cd72d57fce423bea9f2f99ee7efa405940c0d450a12422e171d666ca`,
+[verify](https://deltaverse.pythai.net/wordpress-reader.zip.sha256)), v1.2.0,
 source in `wordpress/plugin/`.
 
-Plugins → Add New → Upload Plugin → Activate → Settings → Reader.
+**Install:** Plugins → Add New Plugin → Upload Plugin → choose the zip → Install
+Now → Activate. With the defaults every post now has LISTEN beside its headline;
+Settings → Reader is optional.
+
+**Adding LISTEN to an article** — three ways, and they compose:
+
+| you want | do this |
+|---|---|
+| every article | nothing: *Every article* is the default under *Where it appears* |
+| only some articles | Settings → Reader → *Only articles I switch on*; then the **LISTEN** box (Default / On / Off) in the editor sidebar of each article |
+| the button at an exact spot | type `[listen]` in the text; `[listen share="yes"]` brings SHARE. The shortcode switches the reader on for that article by itself |
+| one article excluded | its LISTEN box → *Off*. Off wins over everything |
+| try it on one article first | put its post ID in *Only these posts*; clear the field to go site-wide |
+
+Settings → Reader:
 
 | setting | what it does |
 |---|---|
-| Script source | where the reader files load from; leave alone unless you host them |
-| Show on | which single post types get a button. Archives and search are never read |
-| Only these posts | post IDs. One ID is how you try it on one article |
-| Rendered audio store | optional. A store that holds a recording plays the file instead |
-| Theme selectors | only needed if your theme names its article something unusual |
+| Where it appears | every article of the chosen types, or only articles switched on |
+| Post types | which single post types get a button. Archives and search are never read |
+| Only these posts | post IDs. Empty means no restriction |
+| Button position | beside the headline (default), a row above the text, or a row below it. `[listen]` overrides it per article |
+| Share button | on by default. SHARE beside LISTEN and in the corner of the featured image; shares the page's own Open Graph card |
+| Rendered audio store | optional. A store that holds a recording plays the file instead. The store only answers hosts it has been told about |
 | Store prefix | names this site inside a shared store; defaults to your domain |
+| Theme selectors | only needed if your theme names its article something unusual |
+| Script source | where the reader files load from; leave alone unless you host them |
 
-**Why a plugin rather than three script tags.** The widget below works and needs
+The plugin's decisions are covered by `wordpress/plugin/tests/plugin_test.php`
+(32 checks; run with `docker run --rm -v "$PWD:/w:ro" -w /w php:8.3-cli php
+tests/plugin_test.php` from `wordpress/plugin/`).
+
+**Why a plugin rather than script tags.** The widget below works and needs
 nothing installed, but it cannot know anything: it infers the post from a body
 class and finds the article by trying selectors themes tend to use. On the first
 real install that inference reached past the article, and the reader read the
@@ -80,18 +102,41 @@ site footer aloud. WordPress knows all of it; the plugin passes it down.
 
 ### The widget, for a site where you cannot install a plugin
 
-Add **one** custom-HTML widget in a footer region:
+Add **one** custom-HTML widget in a footer region. This is the widget exactly
+as it runs on rage.pythai.net, rendered-audio lane included:
 
 ```html
-<script>window.WPReader = { only: [1469], content: ".entry-content" };</script>
+<script>
+  window.WPReader = { only: [1469, 1428], content: ".entry-content", title: "h1.entry-title",
+                      audioRoot: "https://deltaverse.pythai.net/audio", share: true };
+  window.DV_AUDIO_ROOT = "https://deltaverse.pythai.net/audio";
+</script>
 <script src="https://deltaverse.pythai.net/engine/ngn/voices.js"></script>
 <script src="https://deltaverse.pythai.net/engine/ngn/doc-reader.js"></script>
+<script src="https://deltaverse.pythai.net/engine/ngn/doc-audio.js"></script>
 <script src="https://deltaverse.pythai.net/engine/ngn/wordpress-reader.js"></script>
 ```
 
 Every field of `WPReader` is optional; with none of it the script falls back to
 inspection. An absent or empty `only` means no restriction, so forgetting the
-allowlist cannot silently disable the reader.
+allowlist cannot silently disable the reader. `place: "top" | "bottom"` moves
+the button off the headline; a `<span class="wp-reader-listen"></span>` in the
+article (what the plugin's `[listen]` prints) wins over `place`.
+
+### Sharing, from the image
+
+`share` (default `true`) adds SHARE beside LISTEN and the same control in the
+corner of the featured image. Both share what a share actually shows: the page's
+own `og:title`, `og:description` and `og:image`, read from the `<head>` the site
+already emits, so the preview a reader is handed is the preview the network will
+render. Where the Web Share API can take files the image travels with the link;
+everywhere else a small menu offers X, Facebook, LinkedIn, Reddit, Pinterest
+(the one network that pins the image itself), Telegram, WhatsApp, email, copy
+link and save image, with the card previewed above them. `share: 'title'` or
+`'image'` keeps one control; `share: false` removes both; `shareImage: url`
+overrides the card. The script sends nothing: every route is a link the visitor
+opens, or the browser's own sheet. Live: the SHARE on
+[chainmarketcap-two-stores](https://rage.pythai.net/chainmarketcap-two-stores/).
 
 **A footer widget, not post content.** WordPress runs `wpautop` over post bodies
 and it mangles `<script>`. The widget region is the only reliable sitewide route.
@@ -130,7 +175,7 @@ Render a post the way any other document is rendered, with the block list the
 reader itself produces so the marks line up by index:
 
 ```bash
-python3 render/render_neural.py rage-1469 neural   # reads /tmp/blocks.json
+python3 deltaverse/render/render_neural.py rage-1469 neural   # reads /tmp/blocks.json
 ```
 
 ### Four things the first real install cost us
@@ -174,7 +219,12 @@ the second each block begins, so the highlight is measured rather than estimated
 
 **Re-render whenever the page text changes.** Blocks are aligned by index; edit
 the prose and the old marks point at the wrong lines. `blocks.py` prints a
-checksum for exactly this reason.
+checksum for exactly this reason, and since 2.1.0 the manifest carries a
+fingerprint per block: the player fingerprints the page it is on, lines the
+recording up with it, and shows *rendered · page changed* on the badge rather
+than lighting the wrong paragraph. This happened on the first real install — a
+figure caption left the article after the render and every highlight after it
+ran one paragraph ahead of the voice for two days.
 
 ## Pre-rendering, and why the order matters
 

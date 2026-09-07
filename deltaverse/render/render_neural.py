@@ -8,7 +8,12 @@ this renders the same voice into the same store layout the reader already reads:
     /audio/<doc>/<voice>/part-01.opus  +  manifest.json with per-block marks
 
 Alignment is by block INDEX, not by text, so the source-case text rendered here
-lines up with the CSS-uppercased text the reader highlights.
+lines up with the CSS-uppercased text the reader highlights. The manifest ALSO
+carries a fingerprint per block (FNV-1a over the normalised text, the same
+function doc-reader.js runs on the page), so the player can tell when the page
+has been edited since the render and line the two up instead of lighting the
+wrong paragraph: the first real install lost a figure caption to a republish and
+every highlight after it ran one paragraph ahead of the voice.
 """
 import json, subprocess, sys, wave, struct, os, time, hashlib
 import numpy as np
@@ -96,6 +101,18 @@ def rate_of():
     cfg = json.load(open(MODEL + ".json"))
     return int(cfg.get("audio", {}).get("sample_rate") or 22050)
 
+def fingerprint(text):
+    """FNV-1a 32-bit over the normalised text, hex — byte-for-byte what
+    DVDocReader.fingerprint() computes in the browser (UTF-16 code units, as
+    charCodeAt sees them)."""
+    t = " ".join(str(text).lower().split())
+    units = t.encode("utf-16-le")
+    h = 0x811C9DC5
+    for i in range(0, len(units), 2):
+        h ^= units[i] | (units[i + 1] << 8)
+        h = (h + (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24)) & 0xFFFFFFFF
+    return "%08x" % h
+
 SR = rate_of()
 pcm = bytearray()
 marks = []
@@ -136,6 +153,8 @@ manifest = {
     "sampleRate": SR,
     "generated": time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime()),
     "blocks": len(BLOCKS),
+    "blockFingerprints": [fingerprint(b["text"]) for b in BLOCKS],
+    "blockWords": [len(str(b["text"]).split()) for b in BLOCKS],
     "seconds": round(seconds, 3),
     "bytes": opus.stat().st_size,
     "parts": [{"n": 1, "file": "part-01.opus", "url": f"/audio/{DOC}/{VOICE}/part-01.opus",
