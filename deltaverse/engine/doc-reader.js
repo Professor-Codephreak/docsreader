@@ -307,7 +307,12 @@
 
     // NEURAL IS THE DEFAULT ON EVERY REFRESH. The rate is a comfort setting and is restored; the voice
     // is an identity and an audition is not a preference.
-    var state = { voice: 'neural', rate: 1 };
+    // A PAGE MAY PIN THE VOICE. opts.voice names the voice the reading starts in (neural unless said
+    // otherwise); opts.chooser === false hides the VOICE row, empties the deck's voice list and makes
+    // every voice setter a no-op, so the page reads in one voice and offers no audition. The
+    // WordPress reader mounts this way: on an article the voice is the site's, not the visitor's.
+    var pinned = opts.chooser === false;
+    var state = { voice: opts.voice || 'neural', rate: 1 };
     try {
       var saved = JSON.parse(global.localStorage.getItem(KEY) || '{}');
       if (saved && saved.rate) state.rate = clamp(+saved.rate, 0.6, 1.6);
@@ -381,6 +386,7 @@
 
     title.textContent = srcLabel;
     rate.value = state.rate; rateVal.textContent = '×' + state.rate.toFixed(2);
+    if (pinned) pnl.querySelector('.dvr-voicerow').hidden = true;
 
     // ── voices ───────────────────────────────────────────────────────────
     function fillVoices() {
@@ -1182,7 +1188,7 @@
         part: fileMode() ? pi + 1 : bi + 1,
         parts: fileMode() && A ? A.parts.length : blocks.length,
         vol: deckVol, rate: state.rate, voice: state.voice,
-        voices: DVVoices.list().map(function (v) { return { id: v.id, label: v.name }; }),
+        voices: pinned ? [] : DVVoices.list().map(function (v) { return { id: v.id, label: v.name }; }),
         analyser: analyser, ensureAudio: ensureGraph
       };
     };
@@ -1201,7 +1207,7 @@
       emit();
     };
     global.listenVoice = function (id) {
-      if (!id || id === state.voice) return;
+      if (pinned || !id || id === state.voice) return;
       sel.value = id; sel.dispatchEvent(new global.Event('change')); emit();
     };
     global.listenToggle = function () { if (playing) pause(); else play(); emit(); };
@@ -1266,13 +1272,13 @@
       play: play, pause: pause, stop: finish,
       next: function () { jump(1); }, prev: function () { jump(-1); },
       seek: function (f) { seekFraction(f, playing); },
-      voice: function (id) { if (id && id !== state.voice) { sel.value = id; sel.dispatchEvent(new global.Event('change')); } return state.voice; },
+      voice: function (id) { if (!pinned && id && id !== state.voice) { sel.value = id; sel.dispatchEvent(new global.Event('change')); } return state.voice; },
       open: openPanel, dock: dock,
       destroy: function () { stop(); pnl.remove(); btn.remove(); }
     };
   }
 
-  var DV = { mount: mount, collect: collect, sentences: sentences, fingerprint: fingerprint, version: '2.1.0' };
+  var DV = { mount: mount, collect: collect, sentences: sentences, fingerprint: fingerprint, version: '2.1.1' };
   if (typeof module !== 'undefined' && module.exports) module.exports = DV;
   global.DVDocReader = DV;
 })(typeof window !== 'undefined' ? window : this);

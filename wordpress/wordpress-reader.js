@@ -449,10 +449,15 @@
     // So the root is the article body and nothing else, and the button is moved
     // to the headline afterwards. Moving a node does not disturb its listeners,
     // and the block list stays exactly the article.
+    // ONE VOICE ON AN ARTICLE. The site reads in neural and offers no chooser: a visitor came for the
+    // words, and an audition of the cast is the instrument's business (playdocs), not the article's.
+    // The plugin can name another voice (WPReader.voice) or turn the chooser back on (WPReader.chooser).
     var reader = global.DVDocReader.mount({
       root: content,
       doc: cfg('doc', '') || postId() || 'post',
-      label: cfg('label', '') || (doc.title || 'article').split('|')[0].trim().slice(0, 40)
+      label: cfg('label', '') || (doc.title || 'article').split('|')[0].trim().slice(0, 40),
+      voice: cfg('voice', 'neural'),
+      chooser: cfg('chooser', false) === true
     });
     if (!reader) return;
 
@@ -487,6 +492,6 @@
     boot: boot, isSingle: isSingle, allowed: allowed, postId: postId,
     share: function () { var b = doc.getElementById('dv-share-btn') || doc.body; doShare(b); },
     shareInfo: shareInfo, shareMode: shareMode,
-    contentSelectors: CONTENT, featuredSelectors: FEATURED, config: CFG, version: '1.2.0'
+    contentSelectors: CONTENT, featuredSelectors: FEATURED, config: CFG, version: '1.2.1'
   };
 })(typeof window !== 'undefined' ? window : this);
