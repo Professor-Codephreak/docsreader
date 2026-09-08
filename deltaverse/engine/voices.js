@@ -127,6 +127,13 @@
 
   // ── the derivations, each stating its delta from the reference ─────────
   var DERIVED = {
+    leaderofearth: {
+      id: 'leaderofearth', name: 'Leader', from: 'neural',
+      character: 'one accent from eight world Englishes, deep — the render lane layers it; the browser can only approximate the weight',
+      delta: { rate: 0.92, pitch: 0.86 },
+      approximates: 'leader, layered — the rendered file is the real one',
+      prefer: [/natural/i, /neural/i, /premium/i, /male/i]
+    },
     overlord: {
       id: 'overlord', name: 'OVERLORD', from: 'neural',
       character: 'the register the realm uses about itself — unhurried, low, certain. ' +
@@ -145,6 +152,16 @@
       character: 'the ollywoo director — quicker and brighter; it is watching, and it is keen',
       delta: { rate: 1.08, pitch: 1.08 },
       prefer: [/natural/i, /neural/i, /female/i, /samantha/i, /zira/i]
+    },
+    ancient: {
+      id: 'ancient', name: 'ANCIENT', from: 'neural',
+      // THE CLIENT LANE. Rendered by this device's own synthesiser, on its CPU and RAM, and nothing
+      // leaves the machine — when the platform voice is on-device. `local: true` puts the on-device
+      // voices first in the selection; whether the one chosen actually IS on-device is reported
+      // (`onDevice`), never assumed, because a platform may offer only network voices.
+      character: 'the 1990s tier — read by this device itself, on its own CPU and RAM; it starts in under a second and costs the host nothing',
+      delta: { rate: 0.94, pitch: 0.88 },
+      local: true, prefer: [/natural/i, /neural/i, /premium/i, /./]
     },
     participant: {
       id: 'participant', name: 'Participant', from: 'neural',
@@ -228,7 +245,8 @@
         reference: sv.id === 'neural',
         from: null, seed: null,
         prosody: { rate: sv.prosody.rate, pitch: sv.prosody.pitch, volume: sv.prosody.volume },
-        voice: pick(sv), derivedFrom: null
+        voice: pick(sv), derivedFrom: null,
+        onDevice: (function (v) { return v ? !!v.localService : null; })(pick(sv))
       });
     }
     var d = DERIVED[id];
@@ -250,6 +268,9 @@
       },
       edited: !!(e.rate != null || e.pitch != null || e.volume != null),
       voice: pick(d),
+      local: !!d.local,
+      onDevice: (function (v) { return v ? !!v.localService : null; })(pick(d)),
+      approximates: d.approximates || null,
       derivedFrom: (d.from || 'neural') + ' ×' + (d.delta.rate || 1).toFixed(2) + ' rate, ×' + (d.delta.pitch || 1).toFixed(2) + ' pitch'
     });
   }
@@ -329,7 +350,7 @@
     utter: utter, speak: speak, cancel: cancel,
     platform: function () { return platform.slice(); },
     supported: !!synth,
-    version: '1.1.0'
+    version: '1.2.0'
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = DV;
   global.DVVoices = DV;

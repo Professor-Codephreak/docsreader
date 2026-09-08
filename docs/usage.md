@@ -58,7 +58,7 @@ WordPress sites.
 ### The plugin
 
 [wordpress-reader.zip](https://deltaverse.pythai.net/wordpress-reader.zip)
-(`sha256 2cad5b89cd72d57fce423bea9f2f99ee7efa405940c0d450a12422e171d666ca`,
+(`sha256 7287feb61952255b40f065d532bc585e5230cbef2f87d20a137caa3021ed1124`,
 [verify](https://deltaverse.pythai.net/wordpress-reader.zip.sha256)), v1.2.0,
 source in `wordpress/plugin/`.
 
@@ -107,13 +107,15 @@ as it runs on rage.pythai.net, rendered-audio lane included:
 
 ```html
 <script>
-  window.WPReader = { only: [1469, 1428], content: ".entry-content", title: "h1.entry-title",
+  window.WPReader = { only: [1469, 1428, 1476], chooser: true, autorender: true, anticipate: true, gloss: true,
+                      renderHost: "https://deltaverse.pythai.net", content: ".entry-content", title: "h1.entry-title",
                       audioRoot: "https://deltaverse.pythai.net/audio", share: true };
   window.DV_AUDIO_ROOT = "https://deltaverse.pythai.net/audio";
 </script>
 <script src="https://deltaverse.pythai.net/engine/ngn/voices.js"></script>
 <script src="https://deltaverse.pythai.net/engine/ngn/doc-reader.js"></script>
 <script src="https://deltaverse.pythai.net/engine/ngn/doc-audio.js"></script>
+<script src="https://deltaverse.pythai.net/engine/ngn/listen-diag.js"></script>
 <script src="https://deltaverse.pythai.net/engine/ngn/wordpress-reader.js"></script>
 ```
 
@@ -160,6 +162,7 @@ window.DV_AUDIO_ROOT = "https://deltaverse.pythai.net/audio";
 </script>
 <!-- ...voices.js, doc-reader.js... -->
 <script src="https://deltaverse.pythai.net/engine/ngn/doc-audio.js"></script>
+<script src="https://deltaverse.pythai.net/engine/ngn/listen-diag.js"></script>
 <!-- ...wordpress-reader.js -->
 ```
 

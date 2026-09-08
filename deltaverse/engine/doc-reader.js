@@ -1274,11 +1274,38 @@
       seek: function (f) { seekFraction(f, playing); },
       voice: function (id) { if (!pinned && id && id !== state.voice) { sel.value = id; sel.dispatchEvent(new global.Event('change')); } return state.voice; },
       open: openPanel, dock: dock,
+      // THE RENDER MAY ARRIVE WHILE THE PAGE IS OPEN. adopt(m) takes a manifest in the store's shape
+      // and moves the reader into file mode on it (a live reading in progress is paused, then resumed
+      // on the file); append(parts) adds parts to the manifest already adopted — the way a chained
+      // render lands clip by clip — without disturbing the part that is playing: the element's own
+      // 'ended' moves on to the next part, and the ticks and total are redrawn.
+      adopt: function (m) {
+        if (!m || !m.parts || !m.parts.length) return false;
+        var was = playing && !fileMode();
+        if (was) pause();
+        adoptManifest(m);
+        if (!fileMode()) return false;
+        if (was) play();
+        drawTicks(); progress();
+        return true;
+      },
+      append: function (parts) {
+        if (!A || !parts || !parts.length) return false;
+        parts.forEach(function (p) { if (p && p.url && p.marks) A.parts.push(p); });
+        A.seconds = A.parts.reduce(function (a, p) { return a + (p.seconds || 0); }, 0);
+        A.blocks = Math.max(A.blocks | 0, A.parts.reduce(function (a, p) { return Math.max(a, (p.to | 0) + 1); }, 0));
+        if (A.bytes != null) A.bytes = A.parts.reduce(function (a, p) { return a + (p.bytes || 0); }, 0);
+        warmed = false; warmAll();
+        drawTicks(); progress();
+        return true;
+      },
+      manifest: function () { return A; },
+      mode: function () { return fileMode() ? 'file' : 'live'; },
       destroy: function () { stop(); pnl.remove(); btn.remove(); }
     };
   }
 
-  var DV = { mount: mount, collect: collect, sentences: sentences, fingerprint: fingerprint, version: '2.1.1' };
+  var DV = { mount: mount, collect: collect, sentences: sentences, fingerprint: fingerprint, version: '2.2.0' };
   if (typeof module !== 'undefined' && module.exports) module.exports = DV;
   global.DVDocReader = DV;
 })(typeof window !== 'undefined' ? window : this);

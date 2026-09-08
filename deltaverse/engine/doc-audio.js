@@ -52,6 +52,23 @@
     : '/audio';
   var mem = {};                                    // manifest memo, per (doc, voice)
   var dbp = null;
+  // RESOLVERS. The store is a directory of files somebody rendered ahead. A page may know another way
+  // to get a manifest — wordpress.reader asks the render host for the article it is standing on — so
+  // when the store has nothing, each registered resolver is asked in turn: (docId, voiceId) → a
+  // promise of a manifest in the store's shape, or null. The answer is memoised like a fetched one;
+  // `forget(doc, voice)` clears it so a later attempt can try again.
+  var resolvers = [];
+  function resolve(fn) { if (typeof fn === 'function' && resolvers.indexOf(fn) < 0) resolvers.push(fn); return resolvers.length; }
+  function forget(docId, voiceId) { if (docId == null) { mem = {}; return; } delete mem[docId + '/' + voiceId]; }
+  function ask(docId, voiceId) {
+    var i = 0;
+    return (function next() {
+      if (i >= resolvers.length) return Promise.resolve(null);
+      var fn = resolvers[i++];
+      return Promise.resolve().then(function () { return fn(docId, voiceId); })
+        .then(function (m) { return (m && m.parts && m.parts.length) ? m : next(); }, function () { return next(); });
+    })();
+  }
 
   function open() {
     if (dbp) return dbp;
@@ -118,8 +135,8 @@
             p.url = base + '/' + p.file + (v ? ('?v=' + v) : '');
           });
         }
-        mem[key] = m || null;
-        return mem[key];
+        if (m && m.parts) { mem[key] = m; return m; }
+        return ask(docId, voiceId).then(function (r) { mem[key] = r || null; return mem[key]; });
       });
   }
 
@@ -222,8 +239,9 @@
     stats: stats, evict: evict, clear: clear, download: download,
     cap: function (v) { if (v != null) CAP = Math.max(1024 * 1024, v | 0); return CAP; },
     root: function (v) { if (v != null) ROOT = String(v).replace(/\/$/, ''); return ROOT; },
+    resolve: resolve, forget: forget,
     supported: !!global.indexedDB,
-    version: '1.0.0'
+    version: '1.1.0'
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = DV;
   DV.root = function (url) {

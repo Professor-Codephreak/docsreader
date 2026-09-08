@@ -3,7 +3,7 @@
  * Plugin Name:       wordpress.reader
  * Plugin URI:        https://github.com/Professor-Codephreak/docsreader
  * Description:       Adds LISTEN and SHARE to your articles: reads them aloud on the page, lighting each word as it says it, and shares the article with its own image. No account, no API key, no audio stored on your server.
- * Version:           1.2.0
+ * Version:           1.3.0
  * Requires at least: 5.8
  * Requires PHP:      7.2
  * Author:            Professor Codephreak
@@ -54,7 +54,7 @@ if (!defined('ABSPATH')) {
     exit; // no direct access
 }
 
-define('WPREADER_VERSION', '1.2.0');
+define('WPREADER_VERSION', '1.3.0');
 define('WPREADER_ENGINE_DEFAULT', 'https://deltaverse.pythai.net/engine/ngn');
 define('WPREADER_META', '_wpreader');   // per-post switch: '' (default) | 'on' | 'off'
 
@@ -201,6 +201,8 @@ function wpreader_enqueue() {
         wp_enqueue_script('dv-doc-audio', $engine . '/doc-audio.js', array('dv-voices'), WPREADER_VERSION, true);
         $deps[] = 'dv-doc-audio';
     }
+    wp_enqueue_script('dv-listen-diag', $engine . '/listen-diag.js', array(), WPREADER_VERSION, true);
+    $deps[] = 'dv-listen-diag';
     wp_enqueue_script('wp-reader', $engine . '/wordpress-reader.js', $deps, WPREADER_VERSION, true);
 
     $post_id = (int) get_the_ID();
