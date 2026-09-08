@@ -274,6 +274,27 @@
     return out.map(function (s) { return s.split(SENT).join('.'); }).filter(Boolean);
   }
 
+  // The block's text with every <br> read as a space and the reader's own furniture left out.
+  // innerText would do the first in a browser with layout — and drops the break wherever there is
+  // none (a headless DOM, a hidden element), which turned "above<br>against" into "aboveagainst"
+  // in a dump and then in a render. Walking the nodes is the same answer everywhere.
+  function textWithBreaks(n) {
+    var out = '', w;
+    try {
+      w = doc.createTreeWalker(n, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
+        acceptNode: function (x) {
+          if (x.nodeType === 1 && x.matches && (x.matches(SKIP) || /^(SCRIPT|STYLE|TEMPLATE)$/.test(x.nodeName))) return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      });
+    } catch (e) { return (n.innerText || n.textContent || ''); }
+    var cur;
+    while ((cur = w.nextNode())) {
+      if (cur.nodeType === 3) out += cur.nodeValue;
+      else if (cur.nodeName === 'BR' || /^(P|DIV|LI|TR|H[1-6])$/.test(cur.nodeName)) out += ' ';
+    }
+    return out;
+  }
   function collect(root) {
     var scope = root || doc.body;
     var sel = 'h1,h2,h3,h4,p,blockquote,li,cite,figcaption,dd,dt,td,[data-read]';
@@ -282,7 +303,10 @@
     nodes.forEach(function (n) {
       if (n.closest && n.closest(SKIP)) return;
       if (n.querySelector && n.querySelector(sel)) return;              // containers, not leaves
-      var txt = (n.innerText || n.textContent || '').replace(/\s+/g, ' ').trim();
+      // innerText renders a <br> as a line break; textContent (headless, or an element without layout)
+      // drops it, so "above<br>against" became "aboveagainst" in a dump and a render. Read the text with
+      // the break as a space, whichever path is taken.
+      var txt = textWithBreaks(n).replace(/\s+/g, ' ').trim();
       // the buttons live inside the headline; never read them
       txt = txt.replace(/(\s*\b(LISTEN|STOP|SHARE)(\s*[\u2014-]\s*no voice installed)?)+\s*$/, '').trim();
       if (txt.length < 2 || !/[a-z0-9]/i.test(txt)) return;
@@ -1305,7 +1329,7 @@
     };
   }
 
-  var DV = { mount: mount, collect: collect, sentences: sentences, fingerprint: fingerprint, version: '2.2.0' };
+  var DV = { mount: mount, collect: collect, sentences: sentences, fingerprint: fingerprint, version: '2.2.1' };
   if (typeof module !== 'undefined' && module.exports) module.exports = DV;
   global.DVDocReader = DV;
 })(typeof window !== 'undefined' ? window : this);
