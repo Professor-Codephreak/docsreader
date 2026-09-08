@@ -794,7 +794,12 @@
     // the substrate band
     '.dv-substrate-band{position:relative;width:100%;height:190px;margin:12px 0 18px;border-radius:14px;overflow:hidden;',
     '  border:1px solid rgba(var(--cy,34,211,238),.22);background:radial-gradient(120% 90% at 50% 100%,rgba(var(--cy,34,211,238),.10),rgba(6,8,16,.92))}',
-    '.dv-substrate-band canvas{display:block;width:100%;height:100%}',
+    '.dv-substrate-band canvas{display:block;width:100%;height:100%;position:absolute;inset:0}',
+    '.dv-substrate-band canvas.dv-scope{z-index:0}.dv-substrate-band canvas.dv-mark{z-index:1;position:absolute}',
+    '.dv-substrate-band{transition:box-shadow .18s ease-out,transform .18s ease-out;will-change:transform}',
+    '.dv-substrate-band.beat{box-shadow:0 0 0 2px rgba(var(--am,255,176,84),.55),0 0 34px rgba(var(--cy,34,211,238),.45);transform:scale(1.008)}',
+    '.dv-hero.beat .dv-reader{box-shadow:0 0 26px 4px rgba(var(--am,255,176,84),.5);transform:scale(1.03)}',
+    '@media (prefers-reduced-motion:reduce){.dv-substrate-band.beat,.dv-hero.beat .dv-reader{transform:none}}',
     '.dv-substrate-band .cap{position:absolute;right:10px;bottom:8px;font-family:var(--mono,ui-monospace,SFMono-Regular,Menlo,monospace);font-size:9px;letter-spacing:.16em;color:rgba(255,255,255,.4);text-transform:uppercase}',
     '@media (max-width:640px){.dv-substrate-band{height:140px}}'
   ].join('');
@@ -974,22 +979,95 @@
     for (var b = 0; b < 4; b++) { var a = edges[b] | 0, z = Math.max(a + 1, edges[b + 1] | 0), sum = 0; for (var i = a; i < z; i++) sum += freqBuf[i]; out[b] = sum / (z - a) / 255; }
     return out;
   }
-  function fieldTick() {
+  // THE BEAT IS MEASURED, NOT ASSUMED. Onset detection on the low bands: the energy is compared with
+  // a running mean and deviation over the last ~1.3 s; an onset is energy clearly above that, at
+  // least 240 ms after the previous one. Speech has no drum, so the pulses follow syllable stress and
+  // phrase attacks — which is what a listener sees as the voice breathing. No signal, no pulse.
+  var beat = { hist: [], last: 0, count: 0, glow: 0 }, scopeC = null, scopeCtx = null, timeBuf = null, reduced = false;
+  try { reduced = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+  function detectBeat(bands, level, t) {
+    var e = bands[0] * 0.7 + bands[1] * 0.5 + level * 0.6;
+    var h = beat.hist; h.push(e); if (h.length > 80) h.shift();
+    if (h.length < 20) return 0;
+    var mean = 0; for (var i = 0; i < h.length; i++) mean += h[i]; mean /= h.length;
+    var vr = 0; for (var j = 0; j < h.length; j++) vr += (h[j] - mean) * (h[j] - mean); var sd = Math.sqrt(vr / h.length);
+    if (e > 0.12 && e > mean + Math.max(0.06, 1.6 * sd) && t - beat.last > 240) { beat.last = t; beat.count++; return Math.min(1, (e - mean) / Math.max(0.08, sd * 2)); }
+    return 0;
+  }
+  function onBeat(strength) {
+    beat.glow = 1;
+    if (field && field.pulse) { try { field.pulse(0.6 + strength * 0.8); } catch (e) {} }
+    if (band) { band.classList.add('beat'); setTimeout(function () { if (band) band.classList.remove('beat'); }, 130 + strength * 120); }
+    if (hero) { hero.classList.add('beat'); setTimeout(function () { if (hero) hero.classList.remove('beat'); }, 140); }
+  }
+  function drawScope(an, live, bands, dt) {
+    if (!scopeC || !scopeCtx) return;
+    var dpr = Math.min(2, global.devicePixelRatio || 1), W = scopeC.clientWidth | 0, H = scopeC.clientHeight | 0;
+    if (!W || !H) return;
+    if (scopeC.width !== W * dpr || scopeC.height !== H * dpr) { scopeC.width = W * dpr; scopeC.height = H * dpr; }
+    var g = scopeCtx; g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, W, H);
+    // the beat flash: a radial glow that decays
+    beat.glow = Math.max(0, beat.glow - dt * 2.4);
+    if (beat.glow > 0.01) {
+      var rg = g.createRadialGradient(W / 2, H * 0.55, 4, W / 2, H * 0.55, Math.max(W, H) * 0.6);
+      rg.addColorStop(0, 'rgba(255,176,84,' + (0.28 * beat.glow) + ')'); rg.addColorStop(0.5, 'rgba(34,211,238,' + (0.10 * beat.glow) + ')'); rg.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = rg; g.fillRect(0, 0, W, H);
+    }
+    // the spectrum along the floor: sixteen bars, low on the left
+    if (live && an) {
+      if (!freqBuf || freqBuf.length !== an.frequencyBinCount) freqBuf = new Uint8Array(an.frequencyBinCount);
+      an.getByteFrequencyData(freqBuf);
+      var bars = 16, bw = W / bars, n = Math.floor(freqBuf.length * 0.5);
+      for (var b = 0; b < bars; b++) {
+        var a0 = Math.floor(Math.pow(b / bars, 1.7) * n), a1 = Math.max(a0 + 1, Math.floor(Math.pow((b + 1) / bars, 1.7) * n)), sum = 0;
+        for (var i = a0; i < a1; i++) sum += freqBuf[i];
+        var v = sum / (a1 - a0) / 255, bh = Math.max(1, v * H * 0.42);
+        g.fillStyle = 'rgba(' + (b < 5 ? '255,176,84' : '34,211,238') + ',' + (0.12 + v * 0.5) + ')';
+        g.fillRect(b * bw + 1, H - bh, bw - 2, bh);
+      }
+    }
+    // the oscilloscope: the waveform that is actually playing — a flat line when nothing is
+    if (!timeBuf && an) timeBuf = new Uint8Array(an.fftSize);
+    g.lineWidth = 1.5; g.beginPath();
+    if (live && an) {
+      an.getByteTimeDomainData(timeBuf);
+      var step = timeBuf.length / W, amp = H * 0.38;
+      for (var x = 0; x < W; x++) { var y = H * 0.5 + ((timeBuf[Math.floor(x * step)] - 128) / 128) * amp; if (x === 0) g.moveTo(x, y); else g.lineTo(x, y); }
+      g.strokeStyle = 'rgba(34,211,238,.75)'; g.shadowColor = 'rgba(34,211,238,.9)'; g.shadowBlur = 8 + beat.glow * 14;
+    } else {
+      g.moveTo(0, H * 0.5); g.lineTo(W, H * 0.5); g.strokeStyle = 'rgba(255,255,255,.14)'; g.shadowBlur = 0;
+    }
+    g.stroke(); g.shadowBlur = 0;
+  }
+  var lastTick = 0;
+  function fieldTick(ts) {
     fieldRAF = 0;
     if (!field) return;
+    var t = ts || (global.performance ? performance.now() : Date.now()), dt = lastTick ? Math.min(0.1, (t - lastTick) / 1000) : 0.016; lastTick = t;
     var s = global.listenState ? global.listenState() : null;
     var an = s && s.analyser, live = !!(s && s.playing && s.mode === 'file' && an);
-    var a = senses.state.audio;
-    if (live) { var lv = levelOf(an); a.active = true; a.level = lv; a.bands = bandsOf(an); a.inflection = Math.max(-1, Math.min(1, (lv - lastLevel) * 6)); lastLevel = lv; }
-    else { a.active = false; }
+    var a = senses.state.audio, bands = a.bands;
+    if (live) {
+      var lv = levelOf(an); bands = bandsOf(an);
+      // the response is turned up: the field's own lerp softens it, and a voice is quieter than a drum
+      a.active = true; a.level = Math.min(1, lv * 2.1);
+      a.bands = bands.map(function (v) { return Math.min(1, v * 1.9); });
+      a.inflection = Math.max(-1, Math.min(1, (lv - lastLevel) * 9)); lastLevel = lv;
+      var st = detectBeat(bands, lv, t);
+      if (st > 0 && !reduced) onBeat(st);
+    } else { a.active = false; }
+    if (!document.hidden) drawScope(an, live, bands, dt);
     fieldRAF = global.requestAnimationFrame(fieldTick);
   }
   function mountSubstrate() {
     if (!global.DVDeltaverse || !contentEl || band) return;
     ensureHeroCss();
     band = doc.createElement('div'); band.className = 'dv-substrate-band'; band.setAttribute('data-noread', '1'); band.setAttribute('aria-hidden', 'true');
-    var cv = doc.createElement('canvas'); band.appendChild(cv);
-    var cap = doc.createElement('span'); cap.className = 'cap'; cap.textContent = 'deltaverse substrate · breathing with the audio'; band.appendChild(cap);
+    scopeC = doc.createElement('canvas'); scopeC.className = 'dv-scope'; band.appendChild(scopeC);
+    try { scopeCtx = scopeC.getContext('2d'); } catch (e) { scopeCtx = null; }
+    var cv = doc.createElement('canvas'); cv.className = 'dv-mark'; band.appendChild(cv);
+    var cap = doc.createElement('span'); cap.className = 'cap'; cap.textContent = 'deltaverse substrate · scope · beat · breathing with the audio'; band.appendChild(cap);
     var fig = featuredFigure();
     if (fig && fig.parentNode && !contentEl.contains(fig)) fig.parentNode.insertBefore(band, fig.nextSibling);
     else contentEl.insertBefore(band, contentEl.firstChild);
@@ -1001,7 +1079,7 @@
   }
   function setSubstrate(on) {
     substrateOn = !!on;
-    if (!substrateOn) { if (field) { try { field.stop(); } catch (e) {} field = null; } if (band) { band.remove(); band = null; } if (fieldRAF) { global.cancelAnimationFrame(fieldRAF); fieldRAF = 0; } return; }
+    if (!substrateOn) { if (field) { try { field.stop(); } catch (e) {} field = null; } if (band) { band.remove(); band = null; } scopeC = null; scopeCtx = null; if (fieldRAF) { global.cancelAnimationFrame(fieldRAF); fieldRAF = 0; } return; }
     if (global.DVDeltaverse) { mountSubstrate(); return; }
     if (subLoading) return; subLoading = true;
     var sc = doc.createElement('script'); sc.src = engineRoot + '/deltaverse-substrate.js'; sc.async = true;
@@ -1104,6 +1182,7 @@
     gloss: glossToggle, render: function (voiceId) { gestured = true; if (!reader) return null; var d = cfg('doc', '') || postId() || 'post', v = voiceId || reader.voice(); DVDocAudio.forget(d, v); return DVDocAudio.manifest(d, v).then(function (m) { if (m && reader.adopt) reader.adopt(m); return m; }); },
     menu: function () { var b = doc.getElementById('dv-listen-btn'); if (b) openPlayMenu(b); },
     pythia: setPythia, substrate: setSubstrate, presets: PRESETS,
-    version: '1.4.4', label: 'v0.0.1alpha'
+    beats: function () { return beat.count; },
+    version: '1.5.0', label: 'v0.0.1alpha'
   };
 })(typeof window !== 'undefined' ? window : this);
