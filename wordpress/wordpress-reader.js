@@ -667,14 +667,36 @@
   // in the store. Look for any held voice before giving up, and keep looking for a while: a render
   // in progress lands without the page reloading.
   var HELD_ORDER = ['jaimla', 'neural', 'leaderofearth', 'overlord'];
+  var userStopped = false, autostarted = false;
+  // STOP MEANS STOP. Every deferred start below asks this flag at the moment it fires; the button and
+  // the panel's transport set it, a pick in the play menu clears it.
+  function armStopWatch() {
+    var btn = doc.getElementById('dv-listen-btn');
+    if (btn) btn.addEventListener('click', function () { var s = global.listenState ? global.listenState() : null; if (s && s.playing) userStopped = true; }, true);
+    if (reader && reader.el) reader.el.addEventListener('click', function (e) {
+      var t = e.target.closest ? e.target.closest('[data-a="play"],[data-a="stop"]') : null; if (!t) return;
+      var s = global.listenState ? global.listenState() : null;
+      if (t.getAttribute('data-a') === 'stop' || (s && s.playing)) userStopped = true;
+    }, true);
+  }
+  function autostartNow() {
+    if (autostarted || userStopped || !reader || !autostartFor(postId())) return;
+    var s = global.listenState ? global.listenState() : null;
+    if (!s || s.mode !== 'file') return;
+    autostarted = true;
+    try { reader.open(); reader.play(); } catch (e) {}
+  }
   function fallbackToHeld(tries) {
     if (!reader || !global.DVDocAudio) return;
     var s = global.listenState ? global.listenState() : null;
     if (!s || s.mode === 'file') return;
     var synth = !!(global.DVVoices && DVVoices.usable && DVVoices.usable());
     if (synth && !autostartFor(postId())) return;                 // live synthesis is a working reader
+    if (userStopped) return;
     var docId = cfg('doc', '') || postId() || 'post';
-    var order = [reader.voice()].concat(HELD_ORDER.filter(function (v) { return v !== reader.voice(); }));
+    var allow = voicesFor(postId());
+    var order = [reader.voice()].concat(HELD_ORDER.filter(function (v) { return v !== reader.voice() && (!allow || allow.indexOf(v) >= 0); }));
+    if (allow) order = order.filter(function (v) { return allow.indexOf(v) >= 0; });
     (function next(i) {
       if (i >= order.length) {
         if ((tries || 0) < 12) setTimeout(function () { fallbackToHeld((tries || 0) + 1); }, 20000);
@@ -689,9 +711,24 @@
           if (!m || !m.parts || !m.parts.length) return next(i + 1);
           status((v === reader.voice() ? v : v + ' (held; ' + reader.voice() + ' has no file yet)') + ' · rendered file found');
           if (v !== reader.voice()) reader.voice(v); else { DVDocAudio.manifest(docId, v).then(function (mm) { if (mm && reader.adopt) reader.adopt(mm); }); }
-          if (autostartFor(postId())) setTimeout(function () { try { reader.open(); reader.play(); } catch (e) {} }, 800);
+          setTimeout(autostartNow, 900);
         });
     })(0);
+  }
+  // THE CAST OFFERED, PER POST. `voices: ['jaimla','neural']` (or `{ '1476': [...] , default: [...] }`)
+  // restricts the play menu and the panel's voice select to the voices named — an article that is
+  // pre-rendered in two voices offers those two and nothing that would render or synthesise.
+  function voicesFor(id) {
+    var v = cfg('voices', null);
+    if (v && !Array.isArray(v) && typeof v === 'object') v = v[String(id)] || v['default'] || null;
+    return Array.isArray(v) && v.length ? v.map(String) : null;
+  }
+  function restrictSelect() {
+    var allow = voicesFor(postId());
+    if (!allow || !reader || !reader.el) return;
+    var sel = reader.el.querySelector('[data-a="voice"]'); if (!sel) return;
+    [].slice.call(sel.options).forEach(function (o) { if (allow.indexOf(o.value) < 0) sel.removeChild(o); });
+    if (allow.indexOf(sel.value) < 0 && sel.options.length) { sel.value = allow[0]; }
   }
   function presetFor(id) {
     var p = cfg('preset', '');
@@ -796,14 +833,15 @@
   // ── THE PLAY MENU ───────────────────────────────────────────────────────
   var playMenu = null;
   function menuVoices() {
-    var out = [];
-    ['neural', 'jaimla', 'leaderofearth', 'ancient'].forEach(function (id) {
+    var out = [], allow = voicesFor(postId());
+    (allow || ['neural', 'jaimla', 'leaderofearth', 'ancient']).forEach(function (id) {
       var v = null; try { v = DVVoices.get(id); } catch (e) {}
       if (!v) return;
       var lane = RENDER_LANE[id] ? (heldFor(id) ? 'held · immediate' : 'renders on the host') : (id === 'ancient' ? 'this device · ' + (v.onDevice === true ? 'on-device' : v.onDevice === false ? 'network voice' : 'instant') : 'browser');
       out.push({ id: id, name: v.name, lane: lane, disabled: id === 'ancient' && !(global.DVVoices.usable && DVVoices.usable()) });
     });
     var synth = !!(global.DVVoices.usable && DVVoices.usable());
+    if (allow && allow.indexOf('pythia') < 0) return out;
     out.push({ id: 'pythia', name: 'PYTHIA', lane: synth ? 'jaimla in the oracle chamber + ANCIENT echo from this device' : 'jaimla in the oracle chamber (no device voice to echo)', disabled: false });
     return out;
   }
@@ -838,6 +876,9 @@
     e.preventDefault(); e.stopPropagation();
     gestured = true;
     if (b.dataset.v) {
+      userStopped = false;
+      var pickDoc = cfg('doc', '') || postId() || 'post';
+      if (global.DVDocAudio) DVDocAudio.forget(pickDoc, b.dataset.v === 'pythia' ? 'jaimla' : b.dataset.v);
       if (b.dataset.v === 'pythia') setPythia(true); else { setPythia(false); if (reader) reader.voice(b.dataset.v); }
       onGesture(); if (reader && !(global.listenState && listenState().playing)) reader.play();
     } else if (b.dataset.a === 'substrate') { setSubstrate(!substrateOn); }
@@ -973,11 +1014,12 @@
       // THE CHOOSER IS ON. v1.2 pinned the site's voice; v0.0.1alpha offers the cast, and a pick
       // renders the article in that voice on the host (see THE RENDER LANE above). `chooser:false`
       // restores the pinned reading for a site that wants one voice.
-      chooser: cfg('chooser', true) !== false,
-      autostart: autostartFor(postId())
+      chooser: cfg('chooser', true) !== false
     });
     if (!reader) return;
-    setTimeout(function () { fallbackToHeld(0); }, 1500);
+    armStopWatch();
+    global.DVVoices.ready().then(function () { setTimeout(restrictSelect, 300); });
+    setTimeout(function () { restrictSelect(); autostartNow(); fallbackToHeld(0); }, 1500);
 
     var btn = doc.getElementById('dv-listen-btn');
     var holder = btn && btn.parentNode;
@@ -995,7 +1037,7 @@
     // the first press is the gesture the render lane waits for; the panel's own voice select is a gesture too
     if (btn) btn.addEventListener('click', onGesture, true);
     var sel = reader.el && reader.el.querySelector('[data-a="voice"]');
-    if (sel) sel.addEventListener('change', function () { gestured = true; }, true);
+    if (sel) sel.addEventListener('change', function () { gestured = true; userStopped = false; if (global.DVDocAudio) DVDocAudio.forget(cfg('doc', '') || postId() || 'post', sel.value); }, true);
     if (cfg('gloss', true) !== false) glossButton(target && target.contains(btn) ? target : (btn && btn.parentNode));
     if (cfg('hero', true) !== false && (!preset || preset.hero !== false)) dressHero(btn);
     if (preset && preset.substrate) setSubstrate(true);
@@ -1023,6 +1065,6 @@
     gloss: glossToggle, render: function (voiceId) { gestured = true; if (!reader) return null; var d = cfg('doc', '') || postId() || 'post', v = voiceId || reader.voice(); DVDocAudio.forget(d, v); return DVDocAudio.manifest(d, v).then(function (m) { if (m && reader.adopt) reader.adopt(m); return m; }); },
     menu: function () { var b = doc.getElementById('dv-listen-btn'); if (b) openPlayMenu(b); },
     pythia: setPythia, substrate: setSubstrate, presets: PRESETS,
-    version: '1.4.1', label: 'v0.0.1alpha'
+    version: '1.4.2', label: 'v0.0.1alpha'
   };
 })(typeof window !== 'undefined' ? window : this);
