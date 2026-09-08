@@ -730,6 +730,28 @@
     [].slice.call(sel.options).forEach(function (o) { if (allow.indexOf(o.value) < 0) sel.removeChild(o); });
     if (allow.indexOf(sel.value) < 0 && sel.options.length) { sel.value = allow[0]; }
   }
+  // THE OTHER VOICE IS ALREADY IN THE BROWSER. When an article is held in more than one voice, the
+  // files of the voices not playing are pulled into the browser's cache after the page settles, so a
+  // switch is a seek in a file already here — no fetch inside the gap.
+  function warmOthers() {
+    if (!reader || !global.DVDocAudio || !DVDocAudio.blob) return;
+    var allow = voicesFor(postId()) || HELD_ORDER.slice(0, 2);
+    var docId = cfg('doc', '') || postId() || 'post', root = DVDocAudio.root();
+    allow.filter(function (v) { return v !== reader.voice(); }).forEach(function (v, k) {
+      setTimeout(function () {
+        var base = root + '/' + encodeURIComponent(docId) + '/' + encodeURIComponent(v);
+        global.fetch(base + '/manifest.json', { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+          .then(function (m) {
+            if (!m || !m.parts) return;
+            var ver = String(m.generated || m.bytes || '').replace(/[^0-9A-Za-z]/g, '').slice(-14);
+            (function next(i) {
+              if (i >= m.parts.length) { if (diag) diag.note('event', { kind: 'warm', text: v + ' · ' + m.parts.length + ' part(s) cached for a seamless switch' }); return; }
+              DVDocAudio.blob(base + '/' + m.parts[i].file + (ver ? '?v=' + ver : '')).then(function () { next(i + 1); }, function () { next(i + 1); });
+            })(0);
+          });
+      }, 3000 + k * 1500);
+    });
+  }
   function presetFor(id) {
     var p = cfg('preset', '');
     if (p && typeof p === 'object') p = p[String(id)] || p['default'] || '';
@@ -1036,7 +1058,7 @@
     if (!reader) return;
     armStopWatch();
     global.DVVoices.ready().then(function () { setTimeout(restrictSelect, 300); });
-    setTimeout(function () { restrictSelect(); autostartNow(); fallbackToHeld(0); }, 1500);
+    setTimeout(function () { restrictSelect(); autostartNow(); fallbackToHeld(0); warmOthers(); }, 1500);
 
     var btn = doc.getElementById('dv-listen-btn');
     var holder = btn && btn.parentNode;
@@ -1082,6 +1104,6 @@
     gloss: glossToggle, render: function (voiceId) { gestured = true; if (!reader) return null; var d = cfg('doc', '') || postId() || 'post', v = voiceId || reader.voice(); DVDocAudio.forget(d, v); return DVDocAudio.manifest(d, v).then(function (m) { if (m && reader.adopt) reader.adopt(m); return m; }); },
     menu: function () { var b = doc.getElementById('dv-listen-btn'); if (b) openPlayMenu(b); },
     pythia: setPythia, substrate: setSubstrate, presets: PRESETS,
-    version: '1.4.3', label: 'v0.0.1alpha'
+    version: '1.4.4', label: 'v0.0.1alpha'
   };
 })(typeof window !== 'undefined' ? window : this);

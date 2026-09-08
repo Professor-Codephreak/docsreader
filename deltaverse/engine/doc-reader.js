@@ -821,6 +821,54 @@
       var k = clamp(Math.floor(f * blocks.length), 0, blocks.length - 1);
       return 'block ' + (k + 1);
     }
+    // WHERE THE READING IS, IN BLOCKS. A change of voice carries this across — the same page block
+    // and the same way into it — so the new voice picks up the word the old one was on, rather than
+    // the same fraction of a file that has a different length. neural and jaimla pace the same text
+    // differently; a fraction landed a paragraph away.
+    function positionInBlocks() {
+      if (fileMode() && A && au) {
+        var part = A.parts[pi] || null, t = au.currentTime || 0;
+        if (part && part.marks && part.marks.length) {
+          var k = -1;
+          for (var i = 0; i < part.marks.length; i++) { if (part.marks[i].at <= t) k = i; else break; }
+          if (k >= 0) {
+            var a = part.marks[k].at, b = k + 1 < part.marks.length ? part.marks[k + 1].at : (part.seconds || a);
+            return { block: pageBlockOf(part.marks[k].block), into: b > a ? clamp((t - a) / (b - a), 0, 1) : 0 };
+          }
+        }
+        return { block: pageBlockOf(part ? (part.from | 0) : 0), into: 0 };
+      }
+      var n = blocks[bi] ? blocks[bi].sentences.length : 1;
+      return { block: bi, into: n ? clamp(si / n, 0, 1) : 0 };
+    }
+    // absolute seconds in the CURRENT manifest for a page block and a way into it (null: block not in it)
+    function secondsForBlock(pos) {
+      if (!A || pos.block < 0) return null;
+      var rb = renderBlockOf(pos.block), run = 0;
+      if (rb == null || rb < 0) return null;
+      for (var k = 0; k < A.parts.length; k++) {
+        var part = A.parts[k], mk = part.marks || [];
+        for (var i = 0; i < mk.length; i++) {
+          if (mk[i].block === rb) {
+            var a = mk[i].at, b = i + 1 < mk.length ? mk[i + 1].at : (part.seconds || a);
+            var gap = (A.gap != null ? +A.gap : 0.35);
+            return run + a + pos.into * Math.max(0, b - a - gap);
+          }
+        }
+        run += part.seconds || 0;
+      }
+      return null;
+    }
+    function seekToBlock(pos, andPlay) {
+      if (!pos || !blocks.length) return;
+      if (fileMode() && A && A.seconds) {
+        var secs = secondsForBlock(pos);
+        if (secs == null) { seekFraction(clamp(pos.block / blocks.length, 0, 1), andPlay); return; }
+        seekFraction(clamp(Math.max(0, secs - 0.15) / A.seconds, 0, 1), andPlay);   // a breath before the word
+        return;
+      }
+      jumpTo(clamp(pos.block, 0, blocks.length - 1), andPlay);
+    }
     function seekFraction(f, andPlay) {
       f = clamp(f, 0, 1);
       if (fileMode() && A && A.seconds) {
@@ -831,6 +879,11 @@
             var off = Math.max(0, Math.min(want - run, d - 0.25));
             var go = function () {
               try { au.currentTime = off; } catch (e) {}
+              // not every browser honours a seek before the metadata is in; written again when it lands
+              au.addEventListener('loadedmetadata', function once() {
+                au.removeEventListener('loadedmetadata', once);
+                if (Math.abs((au.currentTime || 0) - off) > 0.5) { try { au.currentTime = off; } catch (e) {} }
+              });
               onTime();
               if (andPlay && !playing) { play(); }
             };
@@ -1100,11 +1153,11 @@
     // audio keeps playing until the new manifest is in hand.
     sel.addEventListener('change', function () {
       state.voice = sel.value;
-      var was = playing, f = fraction();
+      var was = playing, pos = positionInBlocks();
       lookForAudio().then(function () {
         if (fileMode() || liveCanSpeak()) delete btn.dataset.mute; else btn.dataset.mute = '1';
         stop();
-        seekFraction(f, was);
+        seekToBlock(pos, was);          // the same block, the same way in — not the same fraction
         paintBtn();
       });
     });
@@ -1325,11 +1378,12 @@
       },
       manifest: function () { return A; },
       mode: function () { return fileMode() ? 'file' : 'live'; },
+      position: positionInBlocks, seekToBlock: seekToBlock,
       destroy: function () { stop(); pnl.remove(); btn.remove(); }
     };
   }
 
-  var DV = { mount: mount, collect: collect, sentences: sentences, fingerprint: fingerprint, version: '2.2.1' };
+  var DV = { mount: mount, collect: collect, sentences: sentences, fingerprint: fingerprint, version: '2.3.0' };
   if (typeof module !== 'undefined' && module.exports) module.exports = DV;
   global.DVDocReader = DV;
 })(typeof window !== 'undefined' ? window : this);
