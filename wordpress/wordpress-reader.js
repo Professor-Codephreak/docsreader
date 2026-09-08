@@ -654,6 +654,45 @@
     ancient: { voice: 'ancient', substrate: false, hero: true },
     pythia:  { voice: 'jaimla',  substrate: true,  hero: true, pythia: true }
   };
+  // AUTOSTART. `autostart: true` (or `{ '1476': true }`) opens the player and starts the reading when
+  // the page loads, from the rendered file. A browser that refuses autoplay is not argued with: the
+  // reader says "ready — press play" with the panel open, which is the truth of that browser.
+  function autostartFor(id) {
+    var a = cfg('autostart', false);
+    if (a && typeof a === 'object') a = a[String(id)] || a['default'] || false;
+    return a === true || a === 1 || a === '1' || a === 'true';
+  }
+  // NO VOICES INSTALLED IS NOT NO AUDIO. A browser with a synthesiser and no voices used to mute the
+  // button whenever the page's default voice had no rendered file — while another voice's file sat
+  // in the store. Look for any held voice before giving up, and keep looking for a while: a render
+  // in progress lands without the page reloading.
+  var HELD_ORDER = ['jaimla', 'neural', 'leaderofearth', 'overlord'];
+  function fallbackToHeld(tries) {
+    if (!reader || !global.DVDocAudio) return;
+    var s = global.listenState ? global.listenState() : null;
+    if (!s || s.mode === 'file') return;
+    var synth = !!(global.DVVoices && DVVoices.usable && DVVoices.usable());
+    if (synth && !autostartFor(postId())) return;                 // live synthesis is a working reader
+    var docId = cfg('doc', '') || postId() || 'post';
+    var order = [reader.voice()].concat(HELD_ORDER.filter(function (v) { return v !== reader.voice(); }));
+    (function next(i) {
+      if (i >= order.length) {
+        if ((tries || 0) < 12) setTimeout(function () { fallbackToHeld((tries || 0) + 1); }, 20000);
+        return;
+      }
+      var v = order[i];
+      DVDocAudio.forget(docId, v);
+      // a plain store read: the resolver would render, and this is only a look
+      global.fetch(DVDocAudio.root() + '/' + encodeURIComponent(docId) + '/' + encodeURIComponent(v) + '/manifest.json', { cache: 'no-cache' })
+        .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+        .then(function (m) {
+          if (!m || !m.parts || !m.parts.length) return next(i + 1);
+          status((v === reader.voice() ? v : v + ' (held; ' + reader.voice() + ' has no file yet)') + ' · rendered file found');
+          if (v !== reader.voice()) reader.voice(v); else { DVDocAudio.manifest(docId, v).then(function (mm) { if (mm && reader.adopt) reader.adopt(mm); }); }
+          if (autostartFor(postId())) setTimeout(function () { try { reader.open(); reader.play(); } catch (e) {} }, 800);
+        });
+    })(0);
+  }
   function presetFor(id) {
     var p = cfg('preset', '');
     if (p && typeof p === 'object') p = p[String(id)] || p['default'] || '';
@@ -934,9 +973,11 @@
       // THE CHOOSER IS ON. v1.2 pinned the site's voice; v0.0.1alpha offers the cast, and a pick
       // renders the article in that voice on the host (see THE RENDER LANE above). `chooser:false`
       // restores the pinned reading for a site that wants one voice.
-      chooser: cfg('chooser', true) !== false
+      chooser: cfg('chooser', true) !== false,
+      autostart: autostartFor(postId())
     });
     if (!reader) return;
+    setTimeout(function () { fallbackToHeld(0); }, 1500);
 
     var btn = doc.getElementById('dv-listen-btn');
     var holder = btn && btn.parentNode;
@@ -982,6 +1023,6 @@
     gloss: glossToggle, render: function (voiceId) { gestured = true; if (!reader) return null; var d = cfg('doc', '') || postId() || 'post', v = voiceId || reader.voice(); DVDocAudio.forget(d, v); return DVDocAudio.manifest(d, v).then(function (m) { if (m && reader.adopt) reader.adopt(m); return m; }); },
     menu: function () { var b = doc.getElementById('dv-listen-btn'); if (b) openPlayMenu(b); },
     pythia: setPythia, substrate: setSubstrate, presets: PRESETS,
-    version: '1.4.0', label: 'v0.0.1alpha'
+    version: '1.4.1', label: 'v0.0.1alpha'
   };
 })(typeof window !== 'undefined' ? window : this);
