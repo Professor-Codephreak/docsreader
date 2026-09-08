@@ -752,6 +752,17 @@
       }, 3000 + k * 1500);
     });
   }
+  // WHICH SUBSTRATE. `substrate: true | 'deltaverse' | 'mindx' | false`, or a map per post id. The
+  // DeltaVerse substrate is the wordmark; the mindX substrate is the knowledge graph as the two
+  // scaling laws — nodes joining ACROSS (horizontal, scale out: the agnostic module) and each node
+  // growing TALL (vertical, scale up: BDI to CEO) — driven by the audio that is playing.
+  function substrateFor(id, preset) {
+    var v = cfg('substrate', null);
+    if (v && typeof v === 'object') v = (v[String(id)] !== undefined ? v[String(id)] : v['default']);
+    if (v === undefined || v === null || v === '') v = preset && preset.substrate ? 'deltaverse' : false;
+    if (v === true) v = 'deltaverse';
+    return v === 'deltaverse' || v === 'mindx' ? v : false;
+  }
   function presetFor(id) {
     var p = cfg('preset', '');
     if (p && typeof p === 'object') p = p[String(id)] || p['default'] || '';
@@ -925,7 +936,7 @@
       if (global.DVDocAudio) DVDocAudio.forget(pickDoc, b.dataset.v === 'pythia' ? 'jaimla' : b.dataset.v);
       if (b.dataset.v === 'pythia') setPythia(true); else { setPythia(false); if (reader) reader.voice(b.dataset.v); }
       onGesture(); if (reader && !(global.listenState && listenState().playing)) reader.play();
-    } else if (b.dataset.a === 'substrate') { setSubstrate(!substrateOn); }
+    } else if (b.dataset.a === 'substrate') { setSubstrate(!substrateOn, substrateFor(postId(), presetFor(postId())) || substrateKind); }
     else if (b.dataset.a === 'gloss') { glossToggle(); }
     playMenu.hidden = true; paintHero();
   }
@@ -1057,10 +1068,86 @@
       var st = detectBeat(bands, lv, t);
       if (st > 0 && !reduced) onBeat(st);
     } else { a.active = false; }
-    if (!document.hidden) drawScope(an, live, bands, dt);
+    if (!document.hidden) {
+      if (field && field.mindx) drawMindX(an, live, bands, live ? levelOf(an) : 0, dt, live ? (t - beat.last < 40 ? 1 : 0) : 0);
+      else drawScope(an, live, bands, dt);
+    }
     fieldRAF = global.requestAnimationFrame(fieldTick);
   }
+  // ── THE mindX SUBSTRATE ──────────────────────────────────────────────────
+  // Adapted from DVMindX (engine/ngn/mindx.js, the golden-angle knowledge graph). Two axes, two laws:
+  //   HORIZONTAL — scale OUT. Every measured beat lets one more node join the field, placed by the
+  //                golden angle so the graph stays evenly spread however many there are. That is
+  //                the agnostic module: a peer added beside the others, none of them special.
+  //   VERTICAL   — scale UP. Each node carries a column that rises with the level of the voice and
+  //                settles back; sustained energy lifts the whole graph's ceiling. That is the
+  //                cognitive stack, BDI to CEO: the same node, taller.
+  // Links reach further with the mid bands; a pulse travels the field on a beat. Nothing here is a
+  // recording of anything — it is the audio, drawn.
+  var TAU = Math.PI * 2, GOLDEN = TAU / (((1 + Math.sqrt(5)) / 2) * ((1 + Math.sqrt(5)) / 2));
+  var MX = { nodes: [], cap: 48, ceiling: 0, pulse: -1, pulseT: 0, t0: 0, born: 0 };
+  var MX_COLS = ['rgba(88,166,255,', 'rgba(210,168,255,', 'rgba(63,185,80,', 'rgba(227,179,65,'];
+  function mxAdd() {
+    if (MX.nodes.length >= MX.cap) { MX.nodes.shift(); }
+    var i = MX.born++;
+    MX.nodes.push({ i: i, a: i * GOLDEN, r: Math.sqrt(i + 0.5), col: MX_COLS[i % MX_COLS.length], h: 0, born: performance.now() });
+  }
+  function drawMindX(an, live, bands, level, dt, beatStrength) {
+    if (!scopeC || !scopeCtx) return;
+    var dpr = Math.min(2, global.devicePixelRatio || 1), W = scopeC.clientWidth | 0, H = scopeC.clientHeight | 0;
+    if (!W || !H) return;
+    if (scopeC.width !== W * dpr || scopeC.height !== H * dpr) { scopeC.width = W * dpr; scopeC.height = H * dpr; }
+    var g = scopeCtx; g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, W, H);
+    var now = performance.now();
+    if (!MX.t0) { MX.t0 = now; for (var k0 = 0; k0 < 8; k0++) mxAdd(); }
+    if (beatStrength > 0) { mxAdd(); MX.pulse = 0; MX.pulseT = now; }
+    var target = live ? Math.min(1, level * 2.2) : 0;
+    MX.ceiling += (target - MX.ceiling) * (target > MX.ceiling ? 0.18 : 0.04);
+    var n = MX.nodes.length, cx = W * 0.5, cy = H * 0.62;
+    var spread = Math.min(W * 0.46, 26 + n * 4.2);             // the field widens as nodes join: scale OUT
+    var reach = 34 + (bands[1] + bands[2]) * 70;               // links reach with the mids
+    var pts = [];
+    for (var i = 0; i < n; i++) {
+      var nd = MX.nodes[i], age = Math.min(1, (now - nd.born) / 900);
+      var rr = (nd.r / Math.sqrt(n + 0.5)) * spread * age;
+      var x = cx + Math.cos(nd.a) * rr, y = cy + Math.sin(nd.a) * rr * 0.42;
+      var want = live ? Math.min(1, (bands[i % 4] * 1.6 + level * 0.8)) : 0;
+      nd.h += (want - nd.h) * (want > nd.h ? 0.35 : 0.08);
+      pts.push({ x: x, y: y, h: nd.h, col: nd.col, age: age });
+    }
+    g.lineWidth = 0.8;
+    for (var a1 = 0; a1 < n; a1++) for (var b1 = a1 + 1; b1 < Math.min(n, a1 + 9); b1++) {
+      var dx = pts[a1].x - pts[b1].x, dy = pts[a1].y - pts[b1].y, d = Math.sqrt(dx * dx + dy * dy);
+      if (d > reach) continue;
+      var al = (1 - d / reach) * (0.12 + MX.ceiling * 0.5);
+      g.strokeStyle = pts[a1].col + al + ')'; g.beginPath(); g.moveTo(pts[a1].x, pts[a1].y); g.lineTo(pts[b1].x, pts[b1].y); g.stroke();
+    }
+    if (MX.pulse >= 0) {
+      var pr = (now - MX.pulseT) / 700; if (pr > 1.2) MX.pulse = -1;
+      else { g.strokeStyle = 'rgba(227,179,65,' + (0.55 * (1 - pr)) + ')'; g.lineWidth = 1.5; g.beginPath(); g.ellipse(cx, cy, spread * pr, spread * pr * 0.42, 0, 0, TAU); g.stroke(); }
+    }
+    var colH = H * 0.34;
+    for (var j = 0; j < n; j++) {
+      var p = pts[j], hh = (0.08 + p.h * 0.92) * colH * (0.35 + MX.ceiling * 0.65) * p.age;
+      var grad = g.createLinearGradient(p.x, p.y, p.x, p.y - hh);
+      grad.addColorStop(0, p.col + (0.55 * p.age) + ')'); grad.addColorStop(1, p.col + '0)');
+      g.fillStyle = grad; g.fillRect(p.x - 1.2, p.y - hh, 2.4, hh);
+      g.fillStyle = p.col + (0.75 * p.age) + ')'; g.beginPath(); g.arc(p.x, p.y, 1.8 + p.h * 2.6, 0, TAU); g.fill();
+      if (p.h > 0.55) { g.fillStyle = p.col + (0.18 * p.age) + ')'; g.beginPath(); g.arc(p.x, p.y, 6 + p.h * 8, 0, TAU); g.fill(); }
+    }
+    var rg = g.createRadialGradient(cx, cy, 2, cx, cy, 30 + MX.ceiling * 60);
+    rg.addColorStop(0, 'rgba(210,168,255,' + (0.18 + MX.ceiling * 0.35) + ')'); rg.addColorStop(1, 'rgba(210,168,255,0)');
+    g.fillStyle = rg; g.fillRect(0, 0, W, H);
+    g.font = '9px ui-monospace, SFMono-Regular, Menlo, monospace'; g.textBaseline = 'alphabetic';
+    g.fillStyle = 'rgba(255,255,255,.42)';
+    g.textAlign = 'left'; g.fillText('HORIZONTAL · SCALE OUT · ' + n + ' NODES · one more on every beat', 10, H - 8);
+    g.textAlign = 'right'; g.fillText('VERTICAL · SCALE UP · ' + Math.round(MX.ceiling * 100) + '% · the column is the level', W - 10, H - 8);
+    if (!live) { g.textAlign = 'center'; g.fillStyle = 'rgba(255,255,255,.28)'; g.fillText('nothing playing — the graph waits', cx, 16); }
+  }
+  var substrateKind = 'deltaverse';
   function mountSubstrate() {
+    if (substrateKind === 'mindx') { mountMindX(); return; }
     if (!global.DVDeltaverse || !contentEl || band) return;
     ensureHeroCss();
     band = doc.createElement('div'); band.className = 'dv-substrate-band'; band.setAttribute('data-noread', '1'); band.setAttribute('aria-hidden', 'true');
@@ -1077,10 +1164,27 @@
       fieldRAF = global.requestAnimationFrame(fieldTick);
     } catch (e) { band.remove(); band = null; field = null; status('the substrate could not start: ' + ((e && e.message) || e), true); }
   }
-  function setSubstrate(on) {
+  function mountMindX() {
+    if (!contentEl || band) return;
+    ensureHeroCss();
+    band = doc.createElement('div'); band.className = 'dv-substrate-band dv-substrate-mindx'; band.setAttribute('data-noread', '1'); band.setAttribute('aria-hidden', 'true');
+    band.style.background = 'radial-gradient(120% 90% at 50% 100%, rgba(88,166,255,.10), rgba(5,6,12,.94))';
+    band.style.borderColor = 'rgba(210,168,255,.22)';
+    scopeC = doc.createElement('canvas'); scopeC.className = 'dv-scope'; band.appendChild(scopeC);
+    try { scopeCtx = scopeC.getContext('2d'); } catch (e) { scopeCtx = null; }
+    var cap = doc.createElement('span'); cap.className = 'cap'; cap.textContent = 'mindX substrate · horizontal and vertical scaling, drawn from the audio'; band.appendChild(cap);
+    var fig = featuredFigure();
+    if (fig && fig.parentNode && !contentEl.contains(fig)) fig.parentNode.insertBefore(band, fig.nextSibling);
+    else contentEl.insertBefore(band, contentEl.firstChild);
+    MX.nodes = []; MX.t0 = 0; MX.born = 0; MX.ceiling = 0;
+    field = { stop: function () {}, pulse: function () {}, mindx: true };
+    fieldRAF = global.requestAnimationFrame(fieldTick);
+  }
+  function setSubstrate(on, kind) {
+    if (kind) substrateKind = kind;
     substrateOn = !!on;
     if (!substrateOn) { if (field) { try { field.stop(); } catch (e) {} field = null; } if (band) { band.remove(); band = null; } scopeC = null; scopeCtx = null; if (fieldRAF) { global.cancelAnimationFrame(fieldRAF); fieldRAF = 0; } return; }
-    if (global.DVDeltaverse) { mountSubstrate(); return; }
+    if (substrateKind === 'mindx' || global.DVDeltaverse) { mountSubstrate(); return; }
     if (subLoading) return; subLoading = true;
     var sc = doc.createElement('script'); sc.src = engineRoot + '/deltaverse-substrate.js'; sc.async = true;
     sc.onload = function () { subLoading = false; if (substrateOn) mountSubstrate(); };
@@ -1157,7 +1261,8 @@
     if (sel) sel.addEventListener('change', function () { gestured = true; userStopped = false; if (global.DVDocAudio) DVDocAudio.forget(cfg('doc', '') || postId() || 'post', sel.value); }, true);
     if (cfg('gloss', true) !== false) glossButton(target && target.contains(btn) ? target : (btn && btn.parentNode));
     if (cfg('hero', true) !== false && (!preset || preset.hero !== false)) dressHero(btn);
-    if (preset && preset.substrate) setSubstrate(true);
+    var subKind = substrateFor(postId(), preset);
+    if (subKind) setSubstrate(true, subKind);
     if (preset && preset.pythia) setPythia(true);
 
     global.wordpressReader = reader;
@@ -1182,7 +1287,7 @@
     gloss: glossToggle, render: function (voiceId) { gestured = true; if (!reader) return null; var d = cfg('doc', '') || postId() || 'post', v = voiceId || reader.voice(); DVDocAudio.forget(d, v); return DVDocAudio.manifest(d, v).then(function (m) { if (m && reader.adopt) reader.adopt(m); return m; }); },
     menu: function () { var b = doc.getElementById('dv-listen-btn'); if (b) openPlayMenu(b); },
     pythia: setPythia, substrate: setSubstrate, presets: PRESETS,
-    beats: function () { return beat.count; },
-    version: '1.5.0', label: 'v0.0.1alpha'
+    beats: function () { return beat.count; }, substrateKind: function () { return substrateKind; },
+    version: '1.6.0', label: 'v0.0.1alpha'
   };
 })(typeof window !== 'undefined' ? window : this);
