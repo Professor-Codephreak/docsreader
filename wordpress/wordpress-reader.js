@@ -745,6 +745,8 @@
     '  box-shadow:0 0 0 0 rgba(var(--cy,34,211,238),.0);transition:box-shadow .25s,transform .12s,border-color .25s}',
     '.dv-hero .dv-reader:hover{border-color:rgb(var(--cy,34,211,238));box-shadow:0 0 22px rgba(var(--cy,34,211,238),.35)}',
     '.dv-hero .dv-reader:active{transform:scale(.97)}',
+    '.dv-hero .dv-reader{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:manipulation}',
+    '.dv-play-menu{-webkit-user-select:none;user-select:none;touch-action:manipulation}',
     '.dv-hero.ready .dv-reader{animation:dvHeroPulse 2.4s ease-in-out infinite}',
     '.dv-hero.reading .dv-reader{animation:none;border-color:rgba(var(--am,255,176,84),.8)}',
     '.dv-hero.holding .dv-reader{box-shadow:0 0 0 6px rgba(var(--am,255,176,84),.25);border-color:rgb(var(--am,255,176,84))}',
@@ -845,10 +847,25 @@
     out.push({ id: 'pythia', name: 'PYTHIA', lane: synth ? 'jaimla in the oracle chamber + ANCIENT echo from this device' : 'jaimla in the oracle chamber (no device voice to echo)', disabled: false });
     return out;
   }
+  // THE CLICK THAT ENDS A HOLD IS NOT A CLICK AWAY. Lift the pointer anywhere but the exact button
+  // and the browser delivers the click to the nearest common ancestor — the article, or the body —
+  // which an "outside click closes the menu" rule read as leaving. So the menu closes on a
+  // POINTERDOWN outside it, never on a click, and ignores everything for a moment after it opens.
+  var menuOpenedAt = 0;
   function buildPlayMenu() {
     var m = doc.createElement('div'); m.className = 'dv-play-menu'; m.hidden = true; m.setAttribute('data-noread', '1'); m.setAttribute('role', 'menu'); m.setAttribute('aria-label', 'play menu');
     doc.body.appendChild(m);
-    doc.addEventListener('click', function (e) { if (!m.hidden && !m.contains(e.target) && !(hero && hero.contains(e.target))) m.hidden = true; });
+    doc.addEventListener('pointerdown', function (e) {
+      if (m.hidden) return;
+      if (Date.now() - menuOpenedAt < 700) return;
+      if (m.contains(e.target) || (hero && hero.contains(e.target))) return;
+      m.hidden = true;
+    }, true);
+    // the stray click from the hold's release must not reach the page either
+    doc.addEventListener('click', function (e) {
+      if (m.hidden || m.contains(e.target)) return;
+      if (Date.now() - menuOpenedAt < 700) { e.stopPropagation(); e.preventDefault(); }
+    }, true);
     doc.addEventListener('keydown', function (e) { if (e.key === 'Escape') m.hidden = true; });
     return m;
   }
@@ -866,7 +883,7 @@
   function openPlayMenu(btn) {
     if (!playMenu) { playMenu = buildPlayMenu(); playMenu.addEventListener('click', onPlayMenu); }
     paintPlayMenu();
-    playMenu.hidden = false;
+    playMenu.hidden = false; menuOpenedAt = Date.now();
     var r = btn.getBoundingClientRect(), vw = doc.documentElement.clientWidth;
     playMenu.style.left = Math.max(10, Math.min(r.left + global.scrollX, global.scrollX + vw - playMenu.offsetWidth - 10)) + 'px';
     playMenu.style.top = (r.bottom + global.scrollY + 8) + 'px';
@@ -1065,6 +1082,6 @@
     gloss: glossToggle, render: function (voiceId) { gestured = true; if (!reader) return null; var d = cfg('doc', '') || postId() || 'post', v = voiceId || reader.voice(); DVDocAudio.forget(d, v); return DVDocAudio.manifest(d, v).then(function (m) { if (m && reader.adopt) reader.adopt(m); return m; }); },
     menu: function () { var b = doc.getElementById('dv-listen-btn'); if (b) openPlayMenu(b); },
     pythia: setPythia, substrate: setSubstrate, presets: PRESETS,
-    version: '1.4.2', label: 'v0.0.1alpha'
+    version: '1.4.3', label: 'v0.0.1alpha'
   };
 })(typeof window !== 'undefined' ? window : this);
